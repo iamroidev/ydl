@@ -1,72 +1,85 @@
-# RoiTube Downloader
+# ydl
 
-A beautiful, powerful video downloader built with Electron. Download videos from YouTube, Twitter, TikTok, Instagram, and 1800+ other sites.
+![Electron](https://img.shields.io/badge/Electron-333333?style=flat&logo=github) ![HTML5](https://img.shields.io/badge/HTML5-333333?style=flat&logo=github) ![CSS3](https://img.shields.io/badge/CSS3-333333?style=flat&logo=github) ![JavaScript](https://img.shields.io/badge/JavaScript-333333?style=flat&logo=github) ![yt-dlp](https://img.shields.io/badge/yt-dlp-333333?style=flat&logo=github) ![Node.js](https://img.shields.io/badge/Node_js-333333?style=flat&logo=github)
 
-## Supported Platforms
+## Overview
 
-- 🎬 **YouTube** - Videos, Shorts, Playlists, Channels
-- 🐦 **Twitter/X** - Video tweets
-- 📱 **TikTok** - Videos (may require cookies)
-- 📸 **Instagram** - Reels, Posts, Stories, IGTV
-- 📘 **Facebook** - Videos, Reels, Watch
-- 🎮 **Twitch** - Clips, VODs
-- 🔴 **Reddit** - Video posts
-- 🎥 **Vimeo** - Videos
-- 🎵 **SoundCloud** - Audio tracks
-- **+1800 more sites** - Powered by yt-dlp
+RoiTube Downloader is a premium Electron desktop utility designed to download videos, playlists, and channels from YouTube, TikTok, Instagram, Twitter/X, and 1800+ other websites.
 
-## Features
+---
 
-- 🎬 **Video Downloads** - Download in multiple quality options (1080p, 720p, 480p, etc.)
-- 🎵 **Audio Downloads** - Extract audio as high-quality MP3 (320kbps)
-- 📱 **WhatsApp Compatible** - H.264 codec for maximum compatibility
-- 📊 **Progress Tracking** - Real-time download progress with speed & ETA
-- 📁 **Custom Download Location** - Choose where to save your downloads
-- ✂️ **Video Trimming** - Download specific portions of videos
-- 📜 **Download History** - Keep track of all your past downloads
-- ⏰ **Scheduled Downloads** - Schedule downloads for later
-- 🔄 **Batch Downloads** - Download multiple videos at once
-- 🎨 **Modern UI** - Beautiful dark theme with smooth animations
-- 🪟 **Custom Window** - Frameless window with custom title bar
+## Key Features
 
-## Installation
+- **Download YouTube playlists, shorts, channels, and full videos**
+- **Support for Instagram reels/stories and TikTok watermark-free downloads**
+- **Advanced download speed acceleration and format selection (MP4/MP3)**
+- **Native desktop notification integrations**
 
-1. Make sure you have [Node.js](https://nodejs.org/) installed (v16 or higher)
+---
 
-2. Install dependencies:
+## Technology Stack
+
+- **Electron**
+- **HTML5**
+- **CSS3**
+- **JavaScript**
+- **yt-dlp**
+- **Node.js**
+
+---
+
+## Getting Started
+
+### Prerequisites
+
+Ensure you have the required runtimes installed:
+- Git
+- Appropriate package manager (npm/yarn or pip depending on stack)
+
+### Setup Instructions
+
+1. **Clone the Repository**
+   ```bash
+   git clone https://github.com/iamroidev/ydl.git
+   cd ydl
+   ```
+
+2. **Install Dependencies**
+   *For Node/Next.js/React Native projects:*
    ```bash
    npm install
    ```
-
-3. Run the application:
+   *For Python projects:*
    ```bash
-   npm start
+   pip install -r requirements.txt
    ```
 
-## Usage
+3. **Configure Environment**
+   Duplicate the env file (if present) and populate variables:
+   ```bash
+   cp .env.example .env
+   ```
 
-1. **Paste URL** - Copy a YouTube video URL and paste it in the search box
-2. **Select Quality** - Choose your preferred video quality or audio format
-3. **Download** - Click the download button and watch the progress
-4. **Access Files** - Find your downloads in the History tab or download folder
+4. **Launch Application**
+   *For React/Next.js:*
+   ```bash
+   npm run dev
+   ```
+   *For Expo/React Native:*
+   ```bash
+   npx expo start
+   ```
+   *For Python/Flask:*
+   ```bash
+   python app.py
+   ```
 
-## Tech Stack
+---
 
-- **Electron** - Cross-platform desktop app framework
-- **yt-dlp** - Powerful video download engine (1800+ sites)
-- **ffmpeg-static** - Bundled FFmpeg binary for video/audio processing
-- **Deno** - JavaScript runtime for YouTube decryption
+## Contributing
 
-## Development
-
-```bash
-# Run in development mode
-npm run dev
-
-# Build for production
-npm run build
-```
+Contributions are welcome! Please open an issue or submit a pull request with any improvements.
 
 ## License
 
-MIT
+This project is licensed under the MIT License - see the LICENSE file for details.
