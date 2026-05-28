@@ -59,6 +59,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Update yt-dlp
   updateYtdlp: () => ipcRenderer.invoke('update-ytdlp'),
   
+  // System Stats (Disk and Active speeds)
+  getSystemStats: () => ipcRenderer.invoke('get-system-stats'),
+  
   // Event listeners
   onDownloadProgress: (callback) => {
     ipcRenderer.on('download-progress', (event, data) => callback(data));

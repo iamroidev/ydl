@@ -16,6 +16,12 @@ document.addEventListener('DOMContentLoaded', () => {
       setTimeout(() => splash.remove(), 300);
     }
   }, 500);
+  
+  // Initialize Theme, Clipboard, and Stats Polling
+  initTheme();
+  initClipboardPaste();
+  pollSystemStats();
+  setInterval(pollSystemStats, 2000);
 });
 
 // DOM Elements
@@ -761,6 +767,11 @@ function renderDownloads() {
       <span class="status ${d.status}">${d.status}</span>
       <div class="actions">
         ${d.status === 'completed' && d.filePath ? `
+          <button class="action-btn play-btn" onclick="playPreview('${d.id}')" title="Play Preview">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="5,3 19,12 5,21"/>
+            </svg>
+          </button>
           <button class="action-btn" onclick="openFile('${escapeJs(d.filePath)}')" title="Open folder">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
@@ -1268,3 +1279,212 @@ async function init() {
 }
 
 init();
+
+// === Theme Customizer ===
+function initTheme() {
+  const savedTheme = localStorage.getItem('theme') || 'neon';
+  setTheme(savedTheme);
+  
+  const themeBtns = document.querySelectorAll('.theme-btn');
+  themeBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const theme = btn.getAttribute('data-theme');
+      setTheme(theme);
+    });
+  });
+}
+
+function setTheme(theme) {
+  document.body.setAttribute('data-theme', theme);
+  localStorage.setItem('theme', theme);
+  
+  const themeBtns = document.querySelectorAll('.theme-btn');
+  themeBtns.forEach(btn => {
+    if (btn.getAttribute('data-theme') === theme) {
+      btn.classList.add('active');
+    } else {
+      btn.classList.remove('active');
+    }
+  });
+}
+
+// === Clipboard Paste Helper ===
+function initClipboardPaste() {
+  const pasteBtn = document.getElementById('pasteBtn');
+  const urlInput = document.getElementById('urlInput');
+  if (!pasteBtn || !urlInput) return;
+  
+  pasteBtn.addEventListener('click', async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text) {
+        urlInput.value = text.trim();
+        urlInput.dispatchEvent(new Event('input'));
+        showToast('Pasted from clipboard');
+      } else {
+        showToast('Clipboard is empty or not text', 'error');
+      }
+    } catch (err) {
+      console.error('Failed to read clipboard:', err);
+      showToast('Clipboard access denied. Paste manually.', 'error');
+    }
+  });
+}
+
+// === Speed Graph & Bandwidth Monitor ===
+let speedHistory = new Array(30).fill(0);
+let maxSpeedSeen = 1024 * 1024; // 1MB/s
+
+function updateSpeedGraph(currentSpeedBytes) {
+  speedHistory.push(currentSpeedBytes);
+  speedHistory.shift();
+  
+  const canvas = document.getElementById('speedGraphCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  ctx.scale(dpr, dpr);
+  
+  const width = rect.width;
+  const height = rect.height;
+  
+  ctx.clearRect(0, 0, width, height);
+  
+  maxSpeedSeen = Math.max(...speedHistory, 1024 * 1024);
+  
+  // Draw grid
+  ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue('--border').trim() || 'rgba(255, 255, 255, 0.08)';
+  ctx.lineWidth = 1;
+  for (let i = 1; i < 4; i++) {
+    const y = (height / 4) * i;
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(width, y);
+    ctx.stroke();
+  }
+  
+  // Draw line
+  ctx.beginPath();
+  const step = width / (speedHistory.length - 1);
+  for (let i = 0; i < speedHistory.length; i++) {
+    const x = i * step;
+    const normSpeed = speedHistory[i] / maxSpeedSeen;
+    const y = height - (normSpeed * (height - 10)) - 5;
+    if (i === 0) {
+      ctx.moveTo(x, y);
+    } else {
+      ctx.lineTo(x, y);
+    }
+  }
+  
+  const accentColor = getComputedStyle(document.body).getPropertyValue('--accent').trim() || '#e94560';
+  ctx.strokeStyle = accentColor;
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+  
+  ctx.lineTo(width, height);
+  ctx.lineTo(0, height);
+  ctx.closePath();
+  ctx.fillStyle = accentColor.replace(')', ', 0.15)').replace('rgb', 'rgba').replace('#e94560', 'rgba(233, 69, 96, 0.15)');
+  ctx.fill();
+}
+
+async function pollSystemStats() {
+  try {
+    const stats = await window.electronAPI.getSystemStats();
+    
+    const currentSpeedVal = document.getElementById('currentSpeedVal');
+    if (currentSpeedVal) {
+      currentSpeedVal.textContent = formatBytes(stats.speedBytesPerSecond) + '/s';
+    }
+    
+    updateSpeedGraph(stats.speedBytesPerSecond);
+    
+    const diskSpaceText = document.getElementById('diskSpaceText');
+    const diskFreeVal = document.getElementById('diskFreeVal');
+    if (stats.disk && stats.disk.success) {
+      const freeGB = (stats.disk.free / (1024 * 1024 * 1024)).toFixed(1);
+      const totalGB = (stats.disk.total / (1024 * 1024 * 1024)).toFixed(1);
+      const usedPercent = stats.disk.percent;
+      
+      if (diskSpaceText) {
+        diskSpaceText.textContent = `Disk: ${freeGB} GB free / ${totalGB} GB total (${usedPercent}% used)`;
+      }
+      if (diskFreeVal) {
+        diskFreeVal.textContent = `${freeGB} GB`;
+      }
+    } else {
+      if (diskSpaceText) diskSpaceText.textContent = 'Disk: N/A';
+      if (diskFreeVal) diskFreeVal.textContent = 'N/A';
+    }
+  } catch (err) {
+    console.error('Failed to fetch system stats via IPC:', err);
+  }
+}
+
+function formatBytes(bytes, decimals = 2) {
+  if (bytes === 0) return '0.00 B';
+  const k = 1024;
+  const dm = decimals < 0 ? 0 : decimals;
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+}
+
+// === Desktop Preview Player Modal ===
+function playPreview(downloadId) {
+  const d = downloads.find(item => item.id === downloadId);
+  if (!d) return;
+  
+  const modal = document.getElementById('previewModal');
+  const title = document.getElementById('previewTitle');
+  const video = document.getElementById('previewVideo');
+  const audioContainer = document.getElementById('previewAudioContainer');
+  const audio = document.getElementById('previewAudio');
+  
+  if (!modal || !video || !audio || !audioContainer || !title) return;
+  
+  title.textContent = `Preview: ${d.title}`;
+  modal.style.display = 'flex';
+  
+  const streamUrl = 'media://' + encodeURIComponent(d.filePath.replace(/\\/g, '/'));
+  
+  if (d.type === 'audio') {
+    video.style.display = 'none';
+    video.pause();
+    video.src = '';
+    
+    audioContainer.style.display = 'flex';
+    audio.src = streamUrl;
+    audio.play().catch(e => console.log('Audio autoplay blocked:', e));
+  } else {
+    audioContainer.style.display = 'none';
+    audio.pause();
+    audio.src = '';
+    
+    video.style.display = 'block';
+    video.src = streamUrl;
+    video.play().catch(e => console.log('Video autoplay blocked:', e));
+  }
+}
+
+function closePreviewModal() {
+  const modal = document.getElementById('previewModal');
+  const video = document.getElementById('previewVideo');
+  const audio = document.getElementById('previewAudio');
+  
+  if (modal) modal.style.display = 'none';
+  if (video) {
+    video.pause();
+    video.src = '';
+  }
+  if (audio) {
+    audio.pause();
+    audio.src = '';
+  }
+}
+

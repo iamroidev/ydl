@@ -1072,6 +1072,98 @@ app.post('/api/upload-cookies', (req, res) => {
   }
 });
 
+// Helper to parse speed strings (e.g. "1.5MiB/s", "250KiB/s") into raw bytes per second
+function parseSpeed(speedStr) {
+  if (!speedStr || typeof speedStr !== 'string') return 0;
+  const match = speedStr.match(/(\d+\.?\d*)\s*([KMG]i?B\/s|B\/s)/i);
+  if (!match) return 0;
+  const val = parseFloat(match[1]);
+  const unit = match[2].toLowerCase();
+  if (unit.startsWith('g')) return val * 1024 * 1024 * 1024;
+  if (unit.startsWith('m')) return val * 1024 * 1024;
+  if (unit.startsWith('k')) return val * 1024;
+  return val;
+}
+
+// Helper to get disk space information in a cross-platform manner
+function getDiskSpaceInfo(dirPath) {
+  try {
+    if (typeof fs.statfsSync === 'function') {
+      const stats = fs.statfsSync(dirPath);
+      const total = stats.bsize * stats.blocks;
+      const free = stats.bsize * stats.bfree; // Use bfree for total free space
+      const used = total - free;
+      const percent = total > 0 ? Math.round((used / total) * 100) : 0;
+      return { total, free, used, percent, success: true };
+    }
+  } catch (err) {
+    console.error('fs.statfsSync failed, falling back to CLI:', err);
+  }
+
+  try {
+    if (process.platform === 'win32') {
+      const drive = path.resolve(dirPath).substring(0, 2);
+      const output = execSync(`wmic logicaldisk where DeviceID="${drive}" get FreeSpace,Size /format:value`, { stdio: 'pipe' }).toString();
+      const freeSpaceMatch = output.match(/FreeSpace=(\d+)/i);
+      const sizeMatch = output.match(/Size=(\d+)/i);
+      if (freeSpaceMatch && sizeMatch) {
+        const free = parseInt(freeSpaceMatch[1], 10);
+        const total = parseInt(sizeMatch[1], 10);
+        const used = total - free;
+        const percent = total > 0 ? Math.round((used / total) * 100) : 0;
+        return { total, free, used, percent, success: true };
+      }
+    } else {
+      const output = execSync(`df -B1 "${dirPath}"`, { stdio: 'pipe' }).toString();
+      const lines = output.trim().split('\n');
+      if (lines.length > 1) {
+        const parts = lines[1].replace(/\s+/g, ' ').split(' ');
+        if (parts.length >= 4) {
+          const total = parseInt(parts[1], 10);
+          const used = parseInt(parts[2], 10);
+          const free = parseInt(parts[3], 10);
+          const percent = total > 0 ? Math.round((used / total) * 100) : 0;
+          return { total, free, used, percent, success: true };
+        }
+      }
+    }
+  } catch (err) {
+    console.error('Disk space CLI fallback failed:', err);
+  }
+
+  // Safe fallback values
+  return {
+    total: 100 * 1024 * 1024 * 1024,
+    free: 75 * 1024 * 1024 * 1024,
+    used: 25 * 1024 * 1024 * 1024,
+    percent: 25,
+    success: false
+  };
+}
+
+// Get system stats for active downloads speed & disk usage
+app.get('/api/system/stats', (req, res) => {
+  let totalSpeedBps = 0;
+  for (const download of downloadsMap.values()) {
+    if (download.status === 'downloading' && download.speed) {
+      totalSpeedBps += parseSpeed(download.speed);
+    }
+  }
+
+  const disk = getDiskSpaceInfo(settings.downloadPath);
+
+  res.json({
+    speedBytesPerSecond: totalSpeedBps,
+    disk: {
+      total: disk.total,
+      free: disk.free,
+      used: disk.used,
+      percent: disk.percent,
+      success: disk.success
+    }
+  });
+});
+
 // Serve index.html for all non-API routes (SPA support)
 app.get('*', (req, res) => {
   res.sendFile(path.join(PUBLIC_DIR, 'index.html'));
