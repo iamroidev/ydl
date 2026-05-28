@@ -3,8 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:;">
-  <title>RoiTube</title>
+  <meta name="description" content="Download videos from YouTube, Twitter, TikTok, Instagram & 1800+ sites">
+  <meta name="theme-color" content="#e94560">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="RoiTube">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" type="image/svg+xml" href="/icons/icon-192.svg">
+  <link rel="apple-touch-icon" href="/icons/icon-192.svg">
+  <title>RoiTube Downloader</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -27,35 +34,11 @@
     </div>
   </div>
 
-  <!-- Custom Title Bar -->
-  <div class="title-bar">
-    <div class="title-bar-drag">
-      <div class="app-icon">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-          <defs>
-            <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" style="stop-color:#e94560"/>
-              <stop offset="100%" style="stop-color:#ff6b6b"/>
-            </linearGradient>
-          </defs>
-          <rect width="24" height="24" rx="6" fill="url(#logoGrad)"/>
-          <path d="M8 6l10 6-10 6V6z" fill="white"/>
-        </svg>
-      </div>
-      <span class="app-title">RoiTube</span>
-    </div>
-    <div class="window-controls">
-      <button class="control-btn minimize" id="minimizeBtn">
-        <svg width="12" height="12" viewBox="0 0 12 12"><rect y="5" width="12" height="2" fill="currentColor"/></svg>
-      </button>
-      <button class="control-btn maximize" id="maximizeBtn">
-        <svg width="12" height="12" viewBox="0 0 12 12"><rect x="1" y="1" width="10" height="10" stroke="currentColor" stroke-width="2" fill="none"/></svg>
-      </button>
-      <button class="control-btn close" id="closeBtn">
-        <svg width="12" height="12" viewBox="0 0 12 12">
-          <path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="2"/>
-        </svg>
-      </button>
+  <!-- Server Status Bar -->
+  <div class="server-bar" id="serverBar">
+    <div class="server-status" id="serverStatus">
+      <span class="status-dot disconnected"></span>
+      <span>Connecting to server...</span>
     </div>
   </div>
 
@@ -106,8 +89,8 @@
         <span>Settings</span>
       </button>
       <div class="sidebar-footer">
-        <span class="credit">by <a href="https://github.com/amaroidev" target="_blank">roidev</a></span>
-        <span class="version">v2.3.0</span>
+        <span class="credit">by <a href="https://github.com/iamroidev" target="_blank">roidev</a></span>
+        <span class="version" id="versionDisplay">v2.4.0</span>
       </div>
     </nav>
 
@@ -423,24 +406,8 @@
             <h4>Download Location</h4>
             <div class="setting-row">
               <span class="path-display" id="downloadPathDisplay"></span>
-              <button class="btn-secondary" id="changeFolderBtn">Change</button>
+              <button class="btn-secondary" id="changeFolderBtn">Refresh</button>
             </div>
-          </div>
-
-          <div class="setting-group">
-            <h4>Behavior</h4>
-            <label class="setting-toggle">
-              <input type="checkbox" id="minimizeToTray" checked>
-              <span>Minimize to system tray</span>
-            </label>
-            <label class="setting-toggle">
-              <input type="checkbox" id="showNotifications" checked>
-              <span>Show notifications</span>
-            </label>
-            <label class="setting-toggle">
-              <input type="checkbox" id="clipboardMonitor" checked>
-              <span>Clipboard monitor (auto-detect YouTube URLs)</span>
-            </label>
           </div>
 
           <div class="setting-group">
@@ -449,13 +416,11 @@
             <div class="setting-row">
               <span class="path-display" id="cookiesPathDisplay">No cookies file selected</span>
               <div class="btn-group">
+                <input type="file" id="cookiesFileInput" accept=".txt,.cookies,.json" style="display:none">
                 <button class="btn-secondary" id="selectCookiesBtn">Select File</button>
                 <button class="btn-secondary danger" id="clearCookiesBtn" style="display: none;">Clear</button>
               </div>
             </div>
-            <p class="setting-hint">
-              <a href="#" id="cookiesHelpLink">How to export YouTube cookies?</a>
-            </p>
           </div>
 
           <div class="setting-group">
@@ -473,80 +438,16 @@
               <span>Update yt-dlp to latest version</span>
               <button class="btn-secondary" id="updateYtdlpBtn">Update</button>
             </div>
-            <div class="setting-row">
-              <span>Check for RoiTube updates</span>
-              <button class="btn-secondary" id="checkUpdatesBtn">Check</button>
-            </div>
           </div>
 
           <div class="setting-group">
             <h4>About</h4>
-            <p class="about-text" id="versionText">RoiTube v2.4.0</p>
-            <p class="about-text secondary">Fast and powerful YouTube downloader with clipboard monitor, scheduling, batch downloads, and more.</p>
+            <p class="about-text" id="versionText">RoiTube v2.4.0 Web</p>
+            <p class="about-text secondary">Fast and powerful video downloader with clipboard monitor, scheduling, batch downloads, and more.</p>
           </div>
         </div>
       </section>
     </main>
-  </div>
-
-  <!-- Update Modal -->
-  <div class="modal" id="updateModal" style="display: none;">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3>Update Available</h3>
-        <button class="btn-clear" onclick="closeUpdateModal()">✕</button>
-      </div>
-      <div class="modal-body">
-        <p id="updateVersionText">A new version is available!</p>
-        <div class="update-notes" id="updateNotes"></div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn-secondary" onclick="closeUpdateModal()">Later</button>
-        <button class="btn-primary" id="downloadUpdateBtn">Download Update</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Cookies Help Modal -->
-  <div class="modal" id="cookiesHelpModal" style="display: none;">
-    <div class="modal-content wide">
-      <div class="modal-header">
-        <h3>How to Export YouTube Cookies</h3>
-        <button class="btn-clear" onclick="closeCookiesHelpModal()">✕</button>
-      </div>
-      <div class="modal-body">
-        <div class="help-steps">
-          <h4>⚠️ Why do I need cookies?</h4>
-          <p>YouTube now requires authentication to prevent bot access. Providing cookies allows RoiTube to download videos as if you were browsing YouTube in your browser.</p>
-          
-          <h4>📋 Steps to export cookies:</h4>
-          <ol>
-            <li>Install a browser extension:
-              <ul>
-                <li><strong>Chrome/Edge:</strong> <a href="https://chrome.google.com/webstore/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc" target="_blank">Get cookies.txt LOCALLY</a></li>
-                <li><strong>Firefox:</strong> <a href="https://addons.mozilla.org/en-US/firefox/addon/cookies-txt/" target="_blank">cookies.txt</a></li>
-              </ul>
-            </li>
-            <li>Open an <strong>Incognito/Private</strong> browser window</li>
-            <li>Go to <a href="https://www.youtube.com" target="_blank">youtube.com</a> and sign in</li>
-            <li>Navigate to <code>youtube.com/robots.txt</code></li>
-            <li>Click the extension icon and export cookies for youtube.com</li>
-            <li>Save the file and select it in RoiTube settings</li>
-            <li><strong>Close the incognito window</strong> (important!)</li>
-          </ol>
-          
-          <h4>⚠️ Important Notes:</h4>
-          <ul>
-            <li>Using cookies may risk your YouTube account being flagged</li>
-            <li>Consider using a secondary/throwaway account</li>
-            <li>Don't share your cookies file with anyone</li>
-          </ul>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn-primary" onclick="closeCookiesHelpModal()">Got it</button>
-      </div>
-    </div>
   </div>
 
   <!-- Batch Import Modal -->
@@ -570,6 +471,6 @@
   <!-- Toast Container -->
   <div class="toast-container" id="toastContainer"></div>
 
-  <script src="renderer.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>

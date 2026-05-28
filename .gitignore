@@ -34,3 +34,7 @@ Thumbs.db
 # Environment
 .env
 .env.local
+
+# Web server local data and downloads
+web/data/
+web/downloads/
