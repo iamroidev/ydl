@@ -185,38 +185,51 @@ async function ensureDeno() {
 
 let denoInstalled = false;
 
-// Find or download yt-dlp
-async function ensureYtdlp() {
+// Find or download yt-dlp with 24-hour auto-update checks
+async function ensureYtdlp(forceUpdate = false) {
   const YTDlpWrap = require('yt-dlp-wrap').default;
   
   // Check for Deno first
   denoInstalled = await ensureDeno();
   
-  const possiblePaths = [
-    path.join(app.getPath('userData'), 'yt-dlp.exe'),
-    'yt-dlp',
-    'yt-dlp.exe'
-  ];
+  const isWin = process.platform === 'win32';
+  const localBinary = path.join(app.getPath('userData'), isWin ? 'yt-dlp.exe' : 'yt-dlp');
   
-  for (const p of possiblePaths) {
+  let needsDownload = true;
+  
+  if (!forceUpdate && fs.existsSync(localBinary)) {
     try {
-      execSync(`"${p}" --version`, { stdio: 'pipe' });
-      ytdlpPath = p;
-      console.log('Found yt-dlp at:', ytdlpPath);
-      return;
-    } catch {}
+      // Check file age - if less than 24 hours, skip download
+      const stats = fs.statSync(localBinary);
+      const ageHours = (Date.now() - stats.mtime.getTime()) / (1000 * 60 * 60);
+      if (ageHours < 24) {
+        execSync(`"${localBinary}" --version`, { stdio: 'pipe' });
+        ytdlpPath = localBinary;
+        console.log('Found fresh cached yt-dlp at:', ytdlpPath);
+        needsDownload = false;
+      }
+    } catch (err) {
+      console.log('Cached yt-dlp failed execution or is corrupted, re-downloading...');
+    }
   }
   
-  const downloadTo = path.join(app.getPath('userData'), 'yt-dlp.exe');
-  console.log('Downloading yt-dlp to:', downloadTo);
-  
-  try {
-    await YTDlpWrap.downloadFromGithub(downloadTo);
-    ytdlpPath = downloadTo;
-    console.log('yt-dlp downloaded successfully');
-  } catch (err) {
-    console.error('Failed to download yt-dlp:', err);
-    throw err;
+  if (needsDownload) {
+    console.log('Downloading latest stable yt-dlp from GitHub to:', localBinary);
+    try {
+      if (fs.existsSync(localBinary)) {
+        fs.unlinkSync(localBinary);
+      }
+      await YTDlpWrap.downloadFromGithub(localBinary);
+      if (!isWin) {
+        fs.chmodSync(localBinary, 0o755);
+      }
+      ytdlpPath = localBinary;
+      console.log('yt-dlp updated/downloaded successfully to:', ytdlpPath);
+    } catch (err) {
+      console.error('Failed to download yt-dlp from GitHub:', err);
+      // Fallback to global/system executable
+      ytdlpPath = isWin ? 'yt-dlp.exe' : 'yt-dlp';
+    }
   }
 }
 
