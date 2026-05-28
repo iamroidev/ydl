@@ -17,11 +17,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }, 500);
   
-  // Initialize Theme, Clipboard, and Stats Polling
+  // Initialize Theme and Clipboard Paste helper
   initTheme();
   initClipboardPaste();
-  pollSystemStats();
-  setInterval(pollSystemStats, 2000);
 });
 
 // DOM Elements
@@ -1329,110 +1327,6 @@ function initClipboardPaste() {
       showToast('Clipboard access denied. Paste manually.', 'error');
     }
   });
-}
-
-// === Speed Graph & Bandwidth Monitor ===
-let speedHistory = new Array(30).fill(0);
-let maxSpeedSeen = 1024 * 1024; // 1MB/s
-
-function updateSpeedGraph(currentSpeedBytes) {
-  speedHistory.push(currentSpeedBytes);
-  speedHistory.shift();
-  
-  const canvas = document.getElementById('speedGraphCanvas');
-  if (!canvas) return;
-  const ctx = canvas.getContext('2d');
-  
-  const dpr = window.devicePixelRatio || 1;
-  const rect = canvas.getBoundingClientRect();
-  canvas.width = rect.width * dpr;
-  canvas.height = rect.height * dpr;
-  ctx.scale(dpr, dpr);
-  
-  const width = rect.width;
-  const height = rect.height;
-  
-  ctx.clearRect(0, 0, width, height);
-  
-  maxSpeedSeen = Math.max(...speedHistory, 1024 * 1024);
-  
-  // Draw grid
-  ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue('--border').trim() || 'rgba(255, 255, 255, 0.08)';
-  ctx.lineWidth = 1;
-  for (let i = 1; i < 4; i++) {
-    const y = (height / 4) * i;
-    ctx.beginPath();
-    ctx.moveTo(0, y);
-    ctx.lineTo(width, y);
-    ctx.stroke();
-  }
-  
-  // Draw line
-  ctx.beginPath();
-  const step = width / (speedHistory.length - 1);
-  for (let i = 0; i < speedHistory.length; i++) {
-    const x = i * step;
-    const normSpeed = speedHistory[i] / maxSpeedSeen;
-    const y = height - (normSpeed * (height - 10)) - 5;
-    if (i === 0) {
-      ctx.moveTo(x, y);
-    } else {
-      ctx.lineTo(x, y);
-    }
-  }
-  
-  const accentColor = getComputedStyle(document.body).getPropertyValue('--accent').trim() || '#e94560';
-  ctx.strokeStyle = accentColor;
-  ctx.lineWidth = 2.5;
-  ctx.stroke();
-  
-  ctx.lineTo(width, height);
-  ctx.lineTo(0, height);
-  ctx.closePath();
-  ctx.fillStyle = accentColor.replace(')', ', 0.15)').replace('rgb', 'rgba').replace('#e94560', 'rgba(233, 69, 96, 0.15)');
-  ctx.fill();
-}
-
-async function pollSystemStats() {
-  try {
-    const stats = await window.electronAPI.getSystemStats();
-    
-    const currentSpeedVal = document.getElementById('currentSpeedVal');
-    if (currentSpeedVal) {
-      currentSpeedVal.textContent = formatBytes(stats.speedBytesPerSecond) + '/s';
-    }
-    
-    updateSpeedGraph(stats.speedBytesPerSecond);
-    
-    const diskSpaceText = document.getElementById('diskSpaceText');
-    const diskFreeVal = document.getElementById('diskFreeVal');
-    if (stats.disk && stats.disk.success) {
-      const freeGB = (stats.disk.free / (1024 * 1024 * 1024)).toFixed(1);
-      const totalGB = (stats.disk.total / (1024 * 1024 * 1024)).toFixed(1);
-      const usedPercent = stats.disk.percent;
-      
-      if (diskSpaceText) {
-        diskSpaceText.textContent = `Disk: ${freeGB} GB free / ${totalGB} GB total (${usedPercent}% used)`;
-      }
-      if (diskFreeVal) {
-        diskFreeVal.textContent = `${freeGB} GB`;
-      }
-    } else {
-      if (diskSpaceText) diskSpaceText.textContent = 'Disk: N/A';
-      if (diskFreeVal) diskFreeVal.textContent = 'N/A';
-    }
-  } catch (err) {
-    console.error('Failed to fetch system stats via IPC:', err);
-  }
-}
-
-function formatBytes(bytes, decimals = 2) {
-  if (bytes === 0) return '0.00 B';
-  const k = 1024;
-  const dm = decimals < 0 ? 0 : decimals;
-  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
 }
 
 // === Desktop Preview Player Modal ===
