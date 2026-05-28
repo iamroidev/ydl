@@ -179,8 +179,9 @@ async function ensureYtdlp() {
 }
 
 // Build common yt-dlp arguments with cookies and custom args
-function buildYtdlpArgs(baseArgs = []) {
+function buildYtdlpArgs(baseArgs = [], sourceUrl = '') {
   let args = [...baseArgs];
+  const isYouTubeSource = /youtube\.com|youtu\.be/i.test(sourceUrl || '');
   
   // Add cookies file if configured
   const hasCookies = cookiesFilePath && fs.existsSync(cookiesFilePath);
@@ -188,7 +189,7 @@ function buildYtdlpArgs(baseArgs = []) {
     args.push('--cookies', cookiesFilePath);
     // When using cookies, let yt-dlp auto-select the best client
     // Don't force player_client as it can cause issues with cookies
-  } else {
+  } else if (isYouTubeSource) {
     // Without cookies, try android client first (helps bypass bot detection)
     args.push('--extractor-args', 'youtube:player_client=android,web');
   }
@@ -511,7 +512,7 @@ ipcMain.handle('search-youtube', async (event, query) => {
         '--print', '%(id)s\t%(title)s\t%(duration_string)s\t%(channel)s\t%(view_count)s',
         '--no-warnings'
       ];
-      const args = buildYtdlpArgs(baseArgs);
+      const args = buildYtdlpArgs(baseArgs, 'https://www.youtube.com');
       
       const proc = spawn(ytdlpPath, args);
       let output = '';
@@ -561,7 +562,7 @@ ipcMain.handle('get-video-info', async (event, url) => {
         '--no-playlist',
         url
       ];
-      const args = buildYtdlpArgs(baseArgs);
+      const args = buildYtdlpArgs(baseArgs, url);
       
       console.log('=== GET VIDEO INFO ===');
       console.log('URL:', url);
@@ -675,7 +676,7 @@ ipcMain.handle('get-channel-videos', async (event, url, limit = 20) => {
         '--print', '%(id)s\t%(title)s\t%(duration_string)s',
         channelUrl
       ];
-      const args = buildYtdlpArgs(baseArgs);
+      const args = buildYtdlpArgs(baseArgs, channelUrl);
       
       const proc = spawn(ytdlpPath, args);
       let output = '';
@@ -750,7 +751,7 @@ ipcMain.handle('get-playlist-videos', async (event, url) => {
         '--print', '%(id)s\t%(title)s\t%(duration_string)s',
         url
       ];
-      const args = buildYtdlpArgs(baseArgs);
+      const args = buildYtdlpArgs(baseArgs, url);
       
       const proc = spawn(ytdlpPath, args);
       let output = '';
@@ -861,7 +862,7 @@ ipcMain.handle('start-download', async (event, options) => {
     baseArgs.push(url);
     
     // Build final args with cookies and custom args
-    const args = buildYtdlpArgs(baseArgs);
+    const args = buildYtdlpArgs(baseArgs, url);
     
     console.log('Starting download with args:', args);
     

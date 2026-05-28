@@ -12,7 +12,10 @@
     "build:win": "electron-builder --win",
     "build:portable": "electron-builder --win portable",
     "build:linux": "electron-builder --linux rpm",
-    "build:linux:debug": "TMPDIR=./tmp ELECTRON_BUILDER_LOGGING=debug DEBUG=electron-builder electron-builder --linux rpm"
+    "build:linux:debug": "TMPDIR=./tmp ELECTRON_BUILDER_LOGGING=debug DEBUG=electron-builder electron-builder --linux rpm",
+    "web": "cd web && node server.js",
+    "web:install": "cd web && npm install",
+    "web:icons": "node scripts/generate-icons.js"
   },
   "build": {
     "appId": "com.roidev.roitube",
