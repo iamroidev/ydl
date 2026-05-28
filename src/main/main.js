@@ -26,6 +26,43 @@ function getFfmpegPath() {
   return ffmpegPath;
 }
 
+// Setup bundled Node.js execution environment for yt-dlp signature deciphering
+function getYtdlpEnv() {
+  const env = { ...process.env };
+  
+  try {
+    const tempBinDir = path.join(app.getPath('userData'), 'bin');
+    if (!fs.existsSync(tempBinDir)) {
+      fs.mkdirSync(tempBinDir, { recursive: true });
+    }
+    
+    const destNodeName = process.platform === 'win32' ? 'node.exe' : 'node';
+    const destNodePath = path.join(tempBinDir, destNodeName);
+    
+    // Copy the running Electron executable as 'node' if it doesn't exist
+    if (!fs.existsSync(destNodePath)) {
+      console.log('Copying process exec path to temp bin directory...');
+      fs.copyFileSync(process.execPath, destNodePath);
+      if (process.platform !== 'win32') {
+        fs.chmodSync(destNodePath, 0o755);
+      }
+    }
+    
+    // Add temp bin dir to Path
+    const pathKey = process.platform === 'win32' ? 'Path' : 'PATH';
+    env[pathKey] = tempBinDir + path.delimiter + (process.env[pathKey] || '');
+    
+    // Tell Electron to run as standard Node.js when spawned
+    env['ELECTRON_RUN_AS_NODE'] = '1';
+    
+  } catch (err) {
+    console.error('Failed to setup bundled node env for yt-dlp:', err);
+  }
+  
+  return env;
+}
+
+
 let mainWindow;
 let tray = null;
 let activeDownloads = new Map();
@@ -539,7 +576,7 @@ ipcMain.handle('search-youtube', async (event, query) => {
       ];
       const args = buildYtdlpArgs(baseArgs, 'https://www.youtube.com');
       
-      const proc = spawn(ytdlpPath, args);
+      const proc = spawn(ytdlpPath, args, { env: getYtdlpEnv() });
       let output = '';
       let errorOutput = '';
       
@@ -595,7 +632,7 @@ ipcMain.handle('get-video-info', async (event, url) => {
       console.log('Cookies exists:', cookiesFilePath ? fs.existsSync(cookiesFilePath) : 'N/A');
       console.log('Full args:', args.join(' '));
       
-      const proc = spawn(ytdlpPath, args);
+      const proc = spawn(ytdlpPath, args, { env: getYtdlpEnv() });
       let output = '';
       let errorOutput = '';
       
@@ -651,7 +688,7 @@ ipcMain.handle('get-subtitles', async (event, url) => {
     return new Promise((resolve) => {
       const args = ['--list-subs', '--skip-download', url];
       
-      const proc = spawn(ytdlpPath, args);
+      const proc = spawn(ytdlpPath, args, { env: getYtdlpEnv() });
       let output = '';
       
       proc.stdout.on('data', (data) => { output += data.toString(); });
@@ -703,7 +740,7 @@ ipcMain.handle('get-channel-videos', async (event, url, limit = 20) => {
       ];
       const args = buildYtdlpArgs(baseArgs, channelUrl);
       
-      const proc = spawn(ytdlpPath, args);
+      const proc = spawn(ytdlpPath, args, { env: getYtdlpEnv() });
       let output = '';
       let errorOutput = '';
       
@@ -778,7 +815,7 @@ ipcMain.handle('get-playlist-videos', async (event, url) => {
       ];
       const args = buildYtdlpArgs(baseArgs, url);
       
-      const proc = spawn(ytdlpPath, args);
+      const proc = spawn(ytdlpPath, args, { env: getYtdlpEnv() });
       let output = '';
       let errorOutput = '';
       
@@ -896,7 +933,7 @@ ipcMain.handle('start-download', async (event, options) => {
     });
     
     return new Promise((resolve) => {
-      const proc = spawn(ytdlpPath, args);
+      const proc = spawn(ytdlpPath, args, { env: getYtdlpEnv() });
       let lastProgress = 0;
       let lastSpeed = '';
       let lastEta = '';
