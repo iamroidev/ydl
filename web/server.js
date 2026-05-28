@@ -4,6 +4,19 @@ const fs = require('fs');
 const { spawn, execSync } = require('child_process');
 const cors = require('cors');
 
+// Setup Node.js execution environment for yt-dlp signature deciphering
+function getYtdlpEnv() {
+  const env = { ...process.env };
+  try {
+    const nodeDir = path.dirname(process.execPath);
+    const pathKey = process.platform === 'win32' ? 'Path' : 'PATH';
+    env[pathKey] = nodeDir + path.delimiter + (process.env[pathKey] || '');
+  } catch (err) {
+    console.error('Failed to setup node env for yt-dlp:', err);
+  }
+  return env;
+}
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -524,7 +537,7 @@ app.post('/api/download/start', async (req, res) => {
     
     console.log('Starting download:', args.join(' '));
     
-    const proc = spawn(ytdlpPath, args);
+    const proc = spawn(ytdlpPath, args, { env: getYtdlpEnv() });
     let outputFilePath = '';
     let errorOutput = '';
     let fullOutput = '';
@@ -1014,7 +1027,7 @@ app.post('/api/subtitles', async (req, res) => {
 // Helper: run yt-dlp and return output
 function runYtdlp(args) {
   return new Promise((resolve) => {
-    const proc = spawn(ytdlpPath, args);
+    const proc = spawn(ytdlpPath, args, { env: getYtdlpEnv() });
     let output = '';
     let errorOutput = '';
     
