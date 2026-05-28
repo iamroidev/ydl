@@ -1,7 +1,12 @@
-const { app, BrowserWindow, ipcMain, dialog, shell, Tray, Menu, nativeImage, clipboard, Notification } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, Tray, Menu, nativeImage, clipboard, Notification, protocol, net } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { spawn, execSync } = require('child_process');
+
+// Register media protocol
+protocol.registerSchemesAsPrivileged([
+  { scheme: 'media', privileges: { bypassCSP: true, stream: true, supportFetchAPI: true, corsEnabled: true } }
+]);
 
 // Fix GPU cache warnings
 app.commandLine.appendSwitch('disable-gpu-shader-disk-cache');
@@ -436,6 +441,26 @@ function checkScheduledDownloads() {
 
 app.whenReady().then(async () => {
   loadSettings();
+  
+  // Register media custom protocol handler
+  protocol.handle('media', (request) => {
+    try {
+      let filePath = decodeURIComponent(request.url.slice('media://'.length));
+      if (process.platform === 'win32') {
+        filePath = filePath.replace(/^\/+/, '');
+      } else {
+        if (!filePath.startsWith('/')) {
+          filePath = '/' + filePath;
+        }
+      }
+      const normalizedPath = path.normalize(filePath);
+      const fileUrl = 'file://' + normalizedPath.replace(/\\/g, '/');
+      return net.fetch(fileUrl);
+    } catch (err) {
+      console.error('media protocol error:', err);
+      return new Response('Error loading media', { status: 500 });
+    }
+  });
   
   // Create window first for fast startup
   createWindow();
@@ -881,7 +906,7 @@ ipcMain.handle('start-download', async (event, options) => {
       let errorOutput = '';
       let fullOutput = ''; // Buffer all output for pattern matching
       
-      activeDownloads.set(id, { proc, paused: false, options });
+      activeDownloads.set(id, { proc, paused: false, options, speed: '' });
       
       proc.stdout.on('data', (data) => {
         const output = data.toString();
@@ -908,7 +933,11 @@ ipcMain.handle('start-download', async (event, options) => {
         const speedMatch = output.match(/(\d+\.?\d*\s*[KMG]i?B\/s)/i);
         const etaMatch = output.match(/(?:ETA\s*)?(\d{1,2}:\d{2}(?::\d{2})?)/);
         
-        if (speedMatch) lastSpeed = speedMatch[1].trim();
+        if (speedMatch) {
+          lastSpeed = speedMatch[1].trim();
+          const entry = activeDownloads.get(id);
+          if (entry) entry.speed = lastSpeed;
+        }
         if (etaMatch && !etaMatch[1].includes('/')) lastEta = etaMatch[1];
         
         // Parse percentage - look for patterns like "9.8%" or "69.3% of"
@@ -1334,3 +1363,96 @@ ipcMain.handle('update-ytdlp', async () => {
     return { success: false, error: error.message };
   }
 });
+
+// Helper to parse speed strings (e.g. "1.5MiB/s", "250KiB/s") into raw bytes per second
+function parseSpeed(speedStr) {
+  if (!speedStr || typeof speedStr !== 'string') return 0;
+  const match = speedStr.match(/(\d+\.?\d*)\s*([KMG]i?B\/s|B\/s)/i);
+  if (!match) return 0;
+  const val = parseFloat(match[1]);
+  const unit = match[2].toLowerCase();
+  if (unit.startsWith('g')) return val * 1024 * 1024 * 1024;
+  if (unit.startsWith('m')) return val * 1024 * 1024;
+  if (unit.startsWith('k')) return val * 1024;
+  return val;
+}
+
+// Helper to get disk space information in a cross-platform manner
+function getDiskSpaceInfo(dirPath) {
+  try {
+    if (typeof fs.statfsSync === 'function') {
+      const stats = fs.statfsSync(dirPath);
+      const total = stats.bsize * stats.blocks;
+      const free = stats.bsize * stats.bfree; // Use bfree for total free space
+      const used = total - free;
+      const percent = total > 0 ? Math.round((used / total) * 100) : 0;
+      return { total, free, used, percent, success: true };
+    }
+  } catch (err) {
+    console.error('fs.statfsSync failed, falling back to CLI:', err);
+  }
+
+  try {
+    if (process.platform === 'win32') {
+      const drive = path.resolve(dirPath).substring(0, 2);
+      const output = execSync(`wmic logicaldisk where DeviceID="${drive}" get FreeSpace,Size /format:value`, { stdio: 'pipe' }).toString();
+      const freeSpaceMatch = output.match(/FreeSpace=(\d+)/i);
+      const sizeMatch = output.match(/Size=(\d+)/i);
+      if (freeSpaceMatch && sizeMatch) {
+        const free = parseInt(freeSpaceMatch[1], 10);
+        const total = parseInt(sizeMatch[1], 10);
+        const used = total - free;
+        const percent = total > 0 ? Math.round((used / total) * 100) : 0;
+        return { total, free, used, percent, success: true };
+      }
+    } else {
+      const output = execSync(`df -B1 "${dirPath}"`, { stdio: 'pipe' }).toString();
+      const lines = output.trim().split('\n');
+      if (lines.length > 1) {
+        const parts = lines[1].replace(/\s+/g, ' ').split(' ');
+        if (parts.length >= 4) {
+          const total = parseInt(parts[1], 10);
+          const used = parseInt(parts[2], 10);
+          const free = parseInt(parts[3], 10);
+          const percent = total > 0 ? Math.round((used / total) * 100) : 0;
+          return { total, free, used, percent, success: true };
+        }
+      }
+    }
+  } catch (err) {
+    console.error('Disk space CLI fallback failed:', err);
+  }
+
+  // Safe fallback values
+  return {
+    total: 100 * 1024 * 1024 * 1024,
+    free: 75 * 1024 * 1024 * 1024,
+    used: 25 * 1024 * 1024 * 1024,
+    percent: 25,
+    success: false
+  };
+}
+
+// Get system stats for active downloads speed & disk usage
+ipcMain.handle('get-system-stats', async () => {
+  let totalSpeedBps = 0;
+  for (const download of activeDownloads.values()) {
+    if (!download.paused && download.speed) {
+      totalSpeedBps += parseSpeed(download.speed);
+    }
+  }
+
+  const disk = getDiskSpaceInfo(downloadPath);
+
+  return {
+    speedBytesPerSecond: totalSpeedBps,
+    disk: {
+      total: disk.total,
+      free: disk.free,
+      used: disk.used,
+      percent: disk.percent,
+      success: disk.success
+    }
+  };
+});
+
