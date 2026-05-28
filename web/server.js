@@ -1177,6 +1177,46 @@ app.get('/api/system/stats', (req, res) => {
   });
 });
 
+// Diagnostics endpoint to debug live node runtime paths and yt-dlp execution
+app.get('/api/diagnostics', (req, res) => {
+  const diag = {
+    platform: process.platform,
+    execPath: process.execPath,
+    nodeVersion: process.version,
+    ytdlpPath: ytdlpPath,
+    envPath: process.env.PATH || process.env.Path || '',
+    nodeVersionRun: '',
+    ytdlpVersionRun: '',
+    nodeExistsInExecPathDir: false,
+    filesInExecPathDir: [],
+    error: null
+  };
+
+  try {
+    const nodeDir = path.dirname(process.execPath);
+    diag.nodeExistsInExecPathDir = fs.existsSync(path.join(nodeDir, process.platform === 'win32' ? 'node.exe' : 'node'));
+    if (fs.existsSync(nodeDir)) {
+      diag.filesInExecPathDir = fs.readdirSync(nodeDir).slice(0, 10);
+    }
+  } catch (e) {
+    diag.error = e.message;
+  }
+
+  try {
+    diag.nodeVersionRun = execSync('node --version', { env: getYtdlpEnv(), stdio: 'pipe' }).toString().trim();
+  } catch (e) {
+    diag.nodeVersionRun = 'Error: ' + e.message;
+  }
+
+  try {
+    diag.ytdlpVersionRun = execSync(`"${ytdlpPath}" --version`, { env: getYtdlpEnv(), stdio: 'pipe' }).toString().trim();
+  } catch (e) {
+    diag.ytdlpVersionRun = 'Error: ' + e.message;
+  }
+
+  res.json(diag);
+});
+
 // Serve index.html for all non-API routes (SPA support)
 app.get('*', (req, res) => {
   res.sendFile(path.join(PUBLIC_DIR, 'index.html'));
