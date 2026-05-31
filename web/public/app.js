@@ -73,8 +73,9 @@ document.addEventListener('DOMContentLoaded', () => {
   renderDownloads();
   registerServiceWorker();
   
-  // Initialize Theme and Clipboard Paste helper
+  // Initialize Theme, Sidebar Collapse, and Clipboard Paste helper
   initTheme();
+  initSidebarCollapse();
   initClipboardPaste();
   
   // Start polling download statuses
@@ -1554,6 +1555,40 @@ function setTheme(theme) {
       btn.classList.remove('active');
     }
   });
+}
+
+// === Sidebar Collapse ===
+function initSidebarCollapse() {
+  const sidebarCollapseBtn = document.getElementById('sidebarCollapseBtn');
+  const container = document.querySelector('.container');
+  if (!sidebarCollapseBtn || !container) return;
+  
+  // Load initial collapsed state from localStorage
+  const isCollapsed = localStorage.getItem('sidebar_collapsed') === 'true';
+  if (isCollapsed) {
+    container.classList.add('sidebar-collapsed');
+    updateCollapseIcon(true);
+  }
+  
+  sidebarCollapseBtn.addEventListener('click', () => {
+    const collapsed = container.classList.toggle('sidebar-collapsed');
+    localStorage.setItem('sidebar_collapsed', collapsed);
+    updateCollapseIcon(collapsed);
+  });
+  
+  function updateCollapseIcon(collapsed) {
+    const icon = sidebarCollapseBtn.querySelector('.collapse-icon');
+    const label = sidebarCollapseBtn.querySelector('span');
+    if (collapsed) {
+      if (icon) icon.style.transform = 'rotate(180deg)';
+      if (label) label.textContent = 'Expand';
+      sidebarCollapseBtn.setAttribute('title', 'Expand Sidebar');
+    } else {
+      if (icon) icon.style.transform = 'rotate(0deg)';
+      if (label) label.textContent = 'Collapse Sidebar';
+      sidebarCollapseBtn.setAttribute('title', 'Collapse Sidebar');
+    }
+  }
 }
 
 // === Clipboard Paste Helper ===
