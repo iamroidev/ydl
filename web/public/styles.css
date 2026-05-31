@@ -101,6 +101,11 @@ body {
   gap: 8px;
 }
 
+/* Mobile Header Base */
+.mobile-header {
+  display: none;
+}
+
 .server-status {
   display: flex;
   align-items: center;
@@ -1620,6 +1625,7 @@ body {
   body {
     height: auto;
     overflow-y: auto;
+    overflow-x: hidden;
   }
   
   .container {
@@ -1628,40 +1634,101 @@ body {
     min-height: 100vh;
   }
 
+  /* Hide default top status bar on mobile */
+  .server-bar {
+    display: none !important;
+  }
+
+  /* Show premium sticky top header */
+  .mobile-header {
+    display: flex;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 52px;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border);
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+    z-index: 1000;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+  
+  .mobile-brand {
+    display: flex;
+    align-items: center;
+    font-weight: 700;
+    font-size: 18px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  
+  .mobile-header-status {
+    display: flex;
+    align-items: center;
+  }
+
+  /* Native-like Bottom Navigation Tab Bar */
   .sidebar {
-    width: 100%;
-    height: auto;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    top: auto;
+    width: 100% !important;
+    height: 62px;
     flex-direction: row;
     flex-wrap: nowrap;
     justify-content: space-around;
     align-items: center;
     border-right: none;
-    border-bottom: 1px solid var(--border);
-    padding: 6px 8px;
-    gap: 4px;
-    position: sticky;
-    top: 0;
-    z-index: 100;
+    border-top: 1px solid var(--border);
+    border-bottom: none;
+    padding: 4px 8px;
     background: var(--bg-secondary);
+    backdrop-filter: blur(25px);
+    -webkit-backdrop-filter: blur(25px);
+    z-index: 1000;
+    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.15);
   }
 
   .sidebar .nav-btn {
     flex: 1;
+    flex-direction: column;
+    align-items: center;
     justify-content: center;
-    padding: 8px 4px;
+    padding: 6px 0;
+    gap: 3px;
+    background: transparent !important;
     border-radius: 8px;
-    gap: 0;
+    color: var(--text-secondary);
   }
 
   .sidebar .nav-btn span {
-    display: none; /* Hide text on tablet/mobile to keep buttons compact */
+    display: block !important; /* Enable text label under icon */
+    font-size: 10px;
+    font-weight: 500;
+  }
+
+  .sidebar .nav-btn.active {
+    color: var(--accent);
+    background: transparent;
+    box-shadow: none;
   }
 
   .sidebar .badge {
-    right: 4px;
+    top: 4px;
+    right: auto;
+    left: 55%;
+    transform: translateX(-50%);
     min-width: 16px;
     height: 16px;
-    font-size: 10px;
+    font-size: 9px;
     padding: 0 4px;
   }
 
@@ -1669,12 +1736,37 @@ body {
     display: none !important;
   }
 
+  /* Padding adjustments to slide main content cleanly between fixed top header and bottom navbar */
   .main-content {
-    padding: 12px;
+    padding: 66px 12px 82px 12px;
     height: auto;
     overflow-y: visible;
   }
 
+  /* Compact Hero section - input at top */
+  .hero {
+    margin-bottom: 20px;
+    padding-top: 8px;
+  }
+
+  .hero-icon {
+    display: none;
+  }
+
+  .hero h1 {
+    font-size: 24px;
+    margin-bottom: 4px;
+  }
+
+  .hero .subtitle {
+    font-size: 13px;
+  }
+
+  .supported-platforms {
+    display: none; /* Hide tags to bring input box directly to view on mobile */
+  }
+
+  /* Input fields and buttons */
   .setting-row {
     flex-direction: column;
     align-items: stretch;
@@ -1750,8 +1842,33 @@ body {
     gap: 8px;
   }
 
+  /* Segmented list style for format buttons */
   .format-grid {
-    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .format-btn {
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 14px 18px;
+    gap: 8px;
+    text-align: left;
+    border-radius: 12px;
+  }
+
+  .format-btn svg {
+    flex-shrink: 0;
+  }
+
+  .format-label {
+    margin-left: 12px;
+  }
+
+  .format-info {
+    margin-left: auto; /* Push metadata size value to the far right side */
+    font-size: 12px;
   }
 }
 

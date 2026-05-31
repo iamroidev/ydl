@@ -42,6 +42,26 @@
     </div>
   </div>
 
+  <!-- Mobile Header -->
+  <header class="mobile-header">
+    <div class="mobile-brand">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" style="margin-right: 8px;">
+        <defs>
+          <linearGradient id="headerGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:#e94560"/>
+            <stop offset="100%" style="stop-color:#ff6b6b"/>
+          </linearGradient>
+        </defs>
+        <rect width="24" height="24" rx="6" fill="url(#headerGrad)"/>
+        <path d="M8 6l10 6-10 6V6z" fill="white"/>
+      </svg>
+      <span>RoiTube</span>
+    </div>
+    <div class="mobile-header-status" id="mobileServerStatus">
+      <span class="status-dot disconnected"></span>
+    </div>
+  </header>
+
   <div class="container">
     <!-- Sidebar Navigation -->
     <nav class="sidebar">
@@ -459,14 +479,21 @@
 
           <div class="setting-group">
             <h4>YouTube Authentication</h4>
-            <p class="setting-description">If downloads fail with "Sign in to confirm you're not a bot", import your YouTube cookies. Use a browser extension like "Get cookies.txt LOCALLY" to export them.</p>
-            <div class="setting-row">
+            <p class="setting-description">Import cookies to bypass YouTube bot detection. Choose one of the options below:</p>
+            
+            <div class="setting-row" style="margin-bottom: 12px;">
               <span class="path-display" id="cookiesPathDisplay">No cookies file selected</span>
               <div class="btn-group">
                 <input type="file" id="cookiesFileInput" accept=".txt,.cookies,.json" style="display:none">
-                <button class="btn-secondary" id="selectCookiesBtn">Select File</button>
+                <button class="btn-secondary" id="selectCookiesBtn">Upload File</button>
                 <button class="btn-secondary danger" id="clearCookiesBtn" style="display: none;">Clear</button>
               </div>
+            </div>
+
+            <div class="setting-row" style="flex-direction: column; align-items: stretch; gap: 8px;">
+              <span class="setting-description" style="margin-bottom: 0; color: var(--text-secondary);">Or paste Netscape Cookie text directly (great for iOS/mobile):</span>
+              <textarea id="cookiesTextInput" class="setting-input" style="height: 120px; resize: vertical; margin-right: 0; font-family: monospace; font-size: 11px;" placeholder="# Netscape HTTP Cookie File..."></textarea>
+              <button class="btn-secondary" id="saveCookiesTextBtn">Save Cookies Text</button>
             </div>
           </div>
 

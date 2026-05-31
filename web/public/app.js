@@ -85,15 +85,19 @@ document.addEventListener('DOMContentLoaded', () => {
 // Check server connection
 async function checkServerConnection() {
   const statusEl = document.getElementById('serverStatus');
-  const dot = statusEl.querySelector('.status-dot');
+  const dot = statusEl?.querySelector('.status-dot');
+  const mobileStatusEl = document.getElementById('mobileServerStatus');
+  const mobileDot = mobileStatusEl?.querySelector('.status-dot');
   
   try {
     await apiGet('/api/settings');
-    dot.className = 'status-dot connected';
-    statusEl.innerHTML = '<span class="status-dot connected"></span><span>Server connected</span>';
+    if (dot) dot.className = 'status-dot connected';
+    if (statusEl) statusEl.innerHTML = '<span class="status-dot connected"></span><span>Server connected</span>';
+    if (mobileDot) mobileDot.className = 'status-dot connected';
   } catch {
-    dot.className = 'status-dot disconnected';
-    statusEl.innerHTML = '<span class="status-dot disconnected"></span><span>Server disconnected</span>';
+    if (dot) dot.className = 'status-dot disconnected';
+    if (statusEl) statusEl.innerHTML = '<span class="status-dot disconnected"></span><span>Server disconnected</span>';
+    if (mobileDot) mobileDot.className = 'status-dot disconnected';
   }
 }
 
@@ -1256,6 +1260,8 @@ async function loadSettings() {
     if (localCookies) {
       cookiesDisplay.textContent = `Local: ${localCookiesName} (Saved in Browser)`;
       clearCookiesBtn.style.display = 'inline-flex';
+      const cookiesTextInput = document.getElementById('cookiesTextInput');
+      if (cookiesTextInput) cookiesTextInput.value = localCookies;
     } else if (settings.cookiesFilePath) {
       cookiesDisplay.textContent = settings.cookiesFilePath;
       clearCookiesBtn.style.display = 'inline-flex';
@@ -1368,7 +1374,47 @@ document.getElementById('clearCookiesBtn')?.addEventListener('click', async () =
   } catch (e) {}
   document.getElementById('cookiesPathDisplay').textContent = 'No cookies file selected';
   document.getElementById('clearCookiesBtn').style.display = 'none';
+  const cookiesTextInput = document.getElementById('cookiesTextInput');
+  if (cookiesTextInput) cookiesTextInput.value = '';
   showToast('Cookies file cleared', 'info');
+});
+
+// Save cookies pasted directly as text
+document.getElementById('saveCookiesTextBtn')?.addEventListener('click', async () => {
+  const text = document.getElementById('cookiesTextInput').value.trim();
+  if (!text) {
+    showToast('Please paste cookies first!', 'warning');
+    return;
+  }
+  
+  // Simple format check
+  if (text.startsWith('{') || text.startsWith('[')) {
+    showToast('Error: Cookies must be in Netscape (txt) format, not JSON!', 'error');
+    return;
+  }
+  
+  localStorage.setItem('youtube_cookies', text);
+  localStorage.setItem('youtube_cookies_name', 'pasted_text.txt');
+  
+  try {
+    const response = await fetch(`${API_BASE}/api/upload-cookies`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: text, filename: 'pasted_text.txt' })
+    });
+    
+    const uploadResult = await response.json();
+    document.getElementById('cookiesPathDisplay').textContent = `Local: pasted_text.txt (Pasted in Browser)`;
+    document.getElementById('clearCookiesBtn').style.display = 'inline-flex';
+    
+    if (uploadResult.success) {
+      showToast('Cookies saved in browser and server!', 'success');
+    } else {
+      showToast('Cookies saved locally in browser!', 'success');
+    }
+  } catch (err) {
+    showToast('Error uploading cookies to server', 'error');
+  }
 });
 
 // Custom yt-dlp args
