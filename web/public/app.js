@@ -97,7 +97,9 @@ async function checkServerConnection() {
   }
 }
 
-// Register service worker for PWA
+let deferredPrompt;
+
+// Register service worker for PWA and setup install logic
 function registerServiceWorker() {
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
@@ -110,7 +112,72 @@ function registerServiceWorker() {
         });
     });
   }
+
+  const installPwaBtn = document.getElementById('installPwaBtn');
+
+  // Listen for the beforeinstallprompt event
+  window.addEventListener('beforeinstallprompt', (e) => {
+    // Prevent Chrome 67 and earlier from automatically showing the prompt
+    e.preventDefault();
+    // Stash the event so it can be triggered later.
+    deferredPrompt = e;
+    // Update UI to notify the user they can install the PWA
+    if (installPwaBtn) {
+      installPwaBtn.style.display = 'flex';
+    }
+  });
+
+  window.addEventListener('appinstalled', (evt) => {
+    console.log('RoiTube was installed.');
+    if (installPwaBtn) {
+      installPwaBtn.style.display = 'none';
+    }
+    deferredPrompt = null;
+  });
+
+  // Check if iOS and not standalone
+  const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+  const isStandalone = window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
+
+  if (isIos && !isStandalone) {
+    if (installPwaBtn) {
+      installPwaBtn.style.display = 'flex';
+    }
+  }
+
+  // Setup click action on install button
+  if (installPwaBtn) {
+    installPwaBtn.addEventListener('click', async () => {
+      if (isIos) {
+        // Show iOS install modal
+        const iosModal = document.getElementById('iosInstallModal');
+        if (iosModal) iosModal.style.display = 'flex';
+        return;
+      }
+
+      if (!deferredPrompt) {
+        showToast('To install, tap your browser menu and select "Install" or "Add to Home screen".');
+        return;
+      }
+      
+      // Show the prompt
+      deferredPrompt.prompt();
+      // Wait for the user to respond to the prompt
+      const { outcome } = await deferredPrompt.userChoice;
+      console.log(`User response to the install prompt: ${outcome}`);
+      // We've used the prompt, and can't use it again
+      deferredPrompt = null;
+      installPwaBtn.style.display = 'none';
+    });
+  }
 }
+
+// Global functions for iOS install modal
+function closeIosInstallModal() {
+  const iosModal = document.getElementById('iosInstallModal');
+  if (iosModal) iosModal.style.display = 'none';
+}
+window.closeIosInstallModal = closeIosInstallModal;
 
 // Polling for download status
 async function pollDownloads() {
