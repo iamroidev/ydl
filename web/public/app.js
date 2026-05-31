@@ -28,9 +28,13 @@ async function apiPost(path, data) {
   try {
     const cookies = localStorage.getItem('youtube_cookies');
     const customYtdlpArgs = localStorage.getItem('custom_ytdlp_args');
+    const poToken = localStorage.getItem('youtube_po_token');
+    const dataSyncId = localStorage.getItem('youtube_data_sync_id');
     const payload = { ...data };
     if (cookies) payload.cookies = cookies;
     if (customYtdlpArgs) payload.customYtdlpArgs = customYtdlpArgs;
+    if (poToken) payload.poToken = poToken;
+    if (dataSyncId) payload.dataSyncId = dataSyncId;
 
     const response = await fetch(`${API_BASE}${path}`, {
       method: 'POST',
@@ -1193,9 +1197,40 @@ async function loadSettings() {
       clearCookiesBtn.style.display = 'none';
     }
     
+    // Load PO Token
+    const localPoToken = localStorage.getItem('youtube_po_token');
+    const poTokenInput = document.getElementById('poTokenInput');
+    const poTokenStatus = document.getElementById('poTokenStatus');
+    const clearPoTokenBtn = document.getElementById('clearPoTokenBtn');
+    if (poTokenInput && poTokenStatus) {
+      if (localPoToken) {
+        poTokenInput.value = localPoToken;
+        poTokenStatus.textContent = `✅ PO Token set (${localPoToken.substring(0, 20)}...)`;
+        if (clearPoTokenBtn) clearPoTokenBtn.style.display = 'inline-flex';
+      } else {
+        poTokenStatus.textContent = 'No PO Token set';
+        if (clearPoTokenBtn) clearPoTokenBtn.style.display = 'none';
+      }
+    }
+    
+    // Load Data Sync ID
+    const localDataSyncId = localStorage.getItem('youtube_data_sync_id');
+    const dataSyncIdInput = document.getElementById('dataSyncIdInput');
+    const dataSyncIdStatus = document.getElementById('dataSyncIdStatus');
+    const clearDataSyncIdBtn = document.getElementById('clearDataSyncIdBtn');
+    if (dataSyncIdInput && dataSyncIdStatus) {
+      if (localDataSyncId) {
+        dataSyncIdInput.value = localDataSyncId;
+        dataSyncIdStatus.textContent = `✅ Data Sync ID set (${localDataSyncId.substring(0, 20)}...)`;
+        if (clearDataSyncIdBtn) clearDataSyncIdBtn.style.display = 'inline-flex';
+      } else {
+        dataSyncIdStatus.textContent = 'No Data Sync ID set';
+        if (clearDataSyncIdBtn) clearDataSyncIdBtn.style.display = 'none';
+      }
+    }
+    
     const localCustomArgs = localStorage.getItem('custom_ytdlp_args');
     document.getElementById('customYtdlpArgs').value = localCustomArgs !== null ? localCustomArgs : (settings.customYtdlpArgs || '');
-    document.getElementById('versionDisplay').textContent = 'v2.4.0';
   } catch (error) {
     console.error('Failed to load settings:', error);
   }
@@ -1279,12 +1314,54 @@ document.getElementById('saveCustomArgsBtn')?.addEventListener('click', async ()
   showToast('Custom arguments saved locally and on server', 'success');
 });
 
+// PO Token save/clear
+document.getElementById('savePoTokenBtn')?.addEventListener('click', () => {
+  const poToken = document.getElementById('poTokenInput').value.trim();
+  if (!poToken) {
+    showToast('Please enter a PO Token', 'warning');
+    return;
+  }
+  localStorage.setItem('youtube_po_token', poToken);
+  document.getElementById('poTokenStatus').textContent = `✅ PO Token set (${poToken.substring(0, 20)}...)`;
+  document.getElementById('clearPoTokenBtn').style.display = 'inline-flex';
+  showToast('PO Token saved! It will be sent with download requests.', 'success');
+});
+
+document.getElementById('clearPoTokenBtn')?.addEventListener('click', () => {
+  localStorage.removeItem('youtube_po_token');
+  document.getElementById('poTokenInput').value = '';
+  document.getElementById('poTokenStatus').textContent = 'No PO Token set';
+  document.getElementById('clearPoTokenBtn').style.display = 'none';
+  showToast('PO Token cleared', 'info');
+});
+
+// Data Sync ID save/clear
+document.getElementById('saveDataSyncIdBtn')?.addEventListener('click', () => {
+  const dataSyncId = document.getElementById('dataSyncIdInput').value.trim();
+  if (!dataSyncId) {
+    showToast('Please enter a Data Sync ID', 'warning');
+    return;
+  }
+  localStorage.setItem('youtube_data_sync_id', dataSyncId);
+  document.getElementById('dataSyncIdStatus').textContent = `✅ Data Sync ID set (${dataSyncId.substring(0, 20)}...)`;
+  document.getElementById('clearDataSyncIdBtn').style.display = 'inline-flex';
+  showToast('Data Sync ID saved!', 'success');
+});
+
+document.getElementById('clearDataSyncIdBtn')?.addEventListener('click', () => {
+  localStorage.removeItem('youtube_data_sync_id');
+  document.getElementById('dataSyncIdInput').value = '';
+  document.getElementById('dataSyncIdStatus').textContent = 'No Data Sync ID set';
+  document.getElementById('clearDataSyncIdBtn').style.display = 'none';
+  showToast('Data Sync ID cleared', 'info');
+});
+
 // Update yt-dlp
 document.getElementById('updateYtdlpBtn')?.addEventListener('click', async () => {
   showToast('Updating yt-dlp...', 'info');
   const result = await apiPost('/api/update-ytdlp');
   if (result.success) {
-    showToast('yt-dlp updated successfully!', 'success');
+    showToast(`yt-dlp updated to latest version!`, 'success');
   } else {
     showToast(`Update failed: ${result.error}`, 'error');
   }

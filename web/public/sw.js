@@ -1,4 +1,4 @@
-const CACHE_NAME = 'roitube-v2.4.0';
+const CACHE_NAME = 'roitube-v2.5.0';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -45,8 +45,23 @@ self.addEventListener('activate', (event) => {
 
 // Fetch event - serve from cache first, fall back to network
 self.addEventListener('fetch', (event) => {
-  // Only handle GET requests
+  // Only handle GET requests - skip POST, PUT, DELETE etc.
   if (event.request.method !== 'GET') {
+    return;
+  }
+
+  const url = new URL(event.request.url);
+
+  // Never cache API requests - always go to network
+  if (url.pathname.startsWith('/api/')) {
+    event.respondWith(
+      fetch(event.request).catch(() => {
+        return new Response(JSON.stringify({ error: 'Offline' }), {
+          headers: { 'Content-Type': 'application/json' },
+          status: 503
+        });
+      })
+    );
     return;
   }
 
@@ -57,11 +72,13 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       fetch(event.request)
         .then(response => {
-          // Cache successful external responses
-          const responseClone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseClone);
-          });
+          // Only cache successful GET responses
+          if (response && response.status === 200) {
+            const responseClone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseClone);
+            });
+          }
           return response;
         })
         .catch(() => caches.match(event.request))
@@ -69,13 +86,13 @@ self.addEventListener('fetch', (event) => {
     return;
   }
   
-  // For same-origin requests: cache-first then network
+  // For same-origin non-API requests: cache-first then network
   event.respondWith(
     caches.match(event.request)
       .then((cachedResponse) => {
         if (cachedResponse) {
           // Return cached version and update in background
-          const fetchPromise = fetch(event.request)
+          fetch(event.request)
             .then((networkResponse) => {
               if (networkResponse && networkResponse.status === 200) {
                 const responseClone = networkResponse.clone();
@@ -83,9 +100,8 @@ self.addEventListener('fetch', (event) => {
                   cache.put(event.request, responseClone);
                 });
               }
-              return networkResponse;
             })
-            .catch(() => cachedResponse);
+            .catch(() => {});
           
           return cachedResponse;
         }
