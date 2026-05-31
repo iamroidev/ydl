@@ -73,9 +73,10 @@ document.addEventListener('DOMContentLoaded', () => {
   renderDownloads();
   registerServiceWorker();
   
-  // Initialize Theme, Sidebar Collapse, and Clipboard Paste helper
+  // Initialize Theme, Sidebar Collapse, YouTube OAuth, and Clipboard Paste helper
   initTheme();
   initSidebarCollapse();
+  initYoutubeOauth();
   initClipboardPaste();
   
   // Start polling download statuses
@@ -1587,6 +1588,154 @@ function initSidebarCollapse() {
       if (icon) icon.style.transform = 'rotate(0deg)';
       if (label) label.textContent = 'Collapse Sidebar';
       sidebarCollapseBtn.setAttribute('title', 'Collapse Sidebar');
+    }
+  }
+}
+
+// === YouTube OAuth2 Authentication ===
+let oauthPollInterval = null;
+
+async function initYoutubeOauth() {
+  const startOauthBtn = document.getElementById('startOauthBtn');
+  const cancelOauthBtn = document.getElementById('cancelOauthBtn');
+  const signOutOauthBtn = document.getElementById('signOutOauthBtn');
+  const copyOauthCodeBtn = document.getElementById('copyOauthCodeBtn');
+  
+  if (!startOauthBtn) return;
+  
+  // Fetch initial status on load
+  try {
+    const res = await apiGet('/api/youtube-oauth/status');
+    updateOauthUI(res);
+  } catch (e) {}
+  
+  startOauthBtn.addEventListener('click', async () => {
+    startOauthBtn.disabled = true;
+    startOauthBtn.textContent = 'Starting...';
+    try {
+      const response = await fetch(`${API_BASE}/api/youtube-oauth/start`, { method: 'POST' });
+      const status = await response.json();
+      updateOauthUI(status);
+      
+      if (status.status === 'waiting_for_user') {
+        // Start polling status
+        if (oauthPollInterval) clearInterval(oauthPollInterval);
+        oauthPollInterval = setInterval(pollOauthStatus, 2000);
+      } else if (status.status === 'failed') {
+        showToast(`Failed to start login: ${status.error}`, 'error');
+      }
+    } catch (err) {
+      showToast('Error connecting to authentication service.', 'error');
+    } finally {
+      startOauthBtn.disabled = false;
+      startOauthBtn.textContent = 'Link YouTube Account';
+    }
+  });
+  
+  cancelOauthBtn?.addEventListener('click', async () => {
+    if (oauthPollInterval) {
+      clearInterval(oauthPollInterval);
+      oauthPollInterval = null;
+    }
+    try {
+      await fetch(`${API_BASE}/api/youtube-oauth/cancel`, { method: 'POST' });
+      showToast('Authentication cancelled.', 'info');
+      updateOauthUI({ status: 'unauthenticated' });
+    } catch (e) {}
+  });
+  
+  signOutOauthBtn?.addEventListener('click', async () => {
+    if (confirm('Are you sure you want to sign out and clear your YouTube account link?')) {
+      try {
+        const response = await fetch(`${API_BASE}/api/youtube-oauth/signout`, { method: 'POST' });
+        const result = await response.json();
+        if (result.success) {
+          showToast('Signed out of YouTube successfully!', 'success');
+          updateOauthUI({ status: 'unauthenticated' });
+        } else {
+          showToast('Failed to sign out: ' + result.error, 'error');
+        }
+      } catch (e) {
+        showToast('Error signing out.', 'error');
+      }
+    }
+  });
+  
+  copyOauthCodeBtn?.addEventListener('click', () => {
+    const codeText = document.getElementById('oauthCodeDisplay')?.textContent;
+    if (codeText && codeText !== 'XXXX-XXXX') {
+      navigator.clipboard.writeText(codeText).then(() => {
+        showToast('Authorization code copied to clipboard!', 'success');
+        copyOauthCodeBtn.textContent = 'Copied!';
+        setTimeout(() => { copyOauthCodeBtn.textContent = 'Copy Code'; }, 2000);
+      }).catch(() => {
+        showToast('Failed to copy code. Please copy manually.', 'warning');
+      });
+    }
+  });
+}
+
+async function pollOauthStatus() {
+  try {
+    const response = await fetch(`${API_BASE}/api/youtube-oauth/status`);
+    const status = await response.json();
+    updateOauthUI(status);
+    
+    if (status.status === 'authenticated') {
+      if (oauthPollInterval) {
+        clearInterval(oauthPollInterval);
+        oauthPollInterval = null;
+      }
+      showToast('YouTube Account linked successfully!', 'success');
+    } else if (status.status === 'failed') {
+      if (oauthPollInterval) {
+        clearInterval(oauthPollInterval);
+        oauthPollInterval = null;
+      }
+      showToast(`Linking failed: ${status.error || 'Timed out'}`, 'error');
+    }
+  } catch (e) {
+    console.error('Error polling oauth status:', e);
+  }
+}
+
+function updateOauthUI(state) {
+  const statusBadge = document.getElementById('oauthStatusBadge');
+  const unlinkedSec = document.getElementById('oauthUnlinkedSection');
+  const linkedSec = document.getElementById('oauthLinkedSection');
+  const wizardSec = document.getElementById('oauthWizard');
+  const codeDisplay = document.getElementById('oauthCodeDisplay');
+  const linkDisplay = document.getElementById('oauthLink');
+  
+  if (!statusBadge) return;
+  
+  if (state.status === 'authenticated') {
+    statusBadge.textContent = 'Linked';
+    statusBadge.style.background = 'rgba(74, 222, 128, 0.15)';
+    statusBadge.style.borderColor = 'rgba(74, 222, 128, 0.3)';
+    statusBadge.style.color = 'var(--success)';
+    
+    unlinkedSec.style.display = 'none';
+    linkedSec.style.display = 'flex';
+    wizardSec.style.display = 'none';
+  } else {
+    statusBadge.textContent = 'Not Linked';
+    statusBadge.style.background = 'rgba(248, 113, 113, 0.15)';
+    statusBadge.style.borderColor = 'rgba(248, 113, 113, 0.3)';
+    statusBadge.style.color = 'var(--error)';
+    
+    unlinkedSec.style.display = 'flex';
+    linkedSec.style.display = 'none';
+    
+    if (state.status === 'waiting_for_user') {
+      wizardSec.style.display = 'block';
+      if (codeDisplay) codeDisplay.textContent = state.code || 'XXXX-XXXX';
+      if (linkDisplay && state.url) linkDisplay.href = state.url;
+    } else if (state.status === 'authenticating') {
+      wizardSec.style.display = 'block';
+      if (codeDisplay) codeDisplay.textContent = 'Generating...';
+    } else {
+      wizardSec.style.display = 'none';
     }
   }
 }
