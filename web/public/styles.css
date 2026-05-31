@@ -141,6 +141,7 @@ body {
   flex-direction: column;
   padding: 16px 12px;
   gap: 6px;
+  flex-shrink: 0;
 }
 
 .nav-btn {
@@ -219,6 +220,8 @@ body {
 .main-content {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
+  min-width: 0;
   padding: 24px;
 }
 
@@ -1644,6 +1647,75 @@ body {
   
   .progress-section {
     width: 100px;
+  }
+}
+
+@media (max-width: 576px) {
+  .main-content {
+    padding: 12px;
+  }
+
+  .setting-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  
+  .path-display {
+    max-width: 100%;
+  }
+
+  .theme-switcher {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  /* Stack download/history/scheduled list items on mobile to prevent overflow */
+  .download-item, .history-item, .scheduled-item {
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 12px;
+    align-items: flex-start;
+  }
+
+  .download-item .info, .history-item .info, .scheduled-item .info {
+    width: calc(100% - 54px); /* full width minus icon and gap */
+    flex: none;
+  }
+
+  .progress-section {
+    width: 100% !important;
+    margin-top: 4px;
+  }
+
+  .download-item .actions, .history-item .actions, .scheduled-item .actions {
+    width: 100%;
+    justify-content: flex-end;
+    margin-top: 8px;
+    border-top: 1px solid var(--border);
+    padding-top: 8px;
+  }
+
+  .download-stats {
+    flex-direction: row;
+    gap: 12px;
+    margin-left: 0;
+    margin-top: 4px;
+  }
+
+  .selected-card {
+    gap: 10px;
+    padding: 10px;
+  }
+
+  .selected-card img {
+    width: 80px;
+    height: 45px;
+  }
+
+  .stats-footer {
+    flex-direction: column;
+    gap: 8px;
   }
 }
 
