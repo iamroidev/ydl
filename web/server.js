@@ -76,7 +76,9 @@ function loadDefaults() {
   return {
     downloadPath: DOWNLOADS_DIR,
     cookiesFilePath: '',
-    customYtdlpArgs: ''
+    customYtdlpArgs: '',
+    poToken: '',
+    dataSyncId: ''
   };
 }
 
@@ -174,9 +176,23 @@ function getFfmpegPath() {
 
 // Find or download yt-dlp with 24-hour auto-update checks
 async function ensureYtdlp(forceUpdate = false) {
-  const YTDlpWrap = require('yt-dlp-wrap').default;
-  
   const isWin = process.platform === 'win32';
+  
+  // First, check for system-installed yt-dlp (from pip or package manager)
+  if (!forceUpdate && !ytdlpPath) {
+    try {
+      const systemVersion = execSync('yt-dlp --version', { stdio: 'pipe' }).toString().trim();
+      if (systemVersion) {
+        ytdlpPath = 'yt-dlp';
+        console.log('Found system-installed yt-dlp version:', systemVersion);
+        return;
+      }
+    } catch (err) {
+      console.log('No system yt-dlp found, checking local binary...');
+    }
+  }
+  
+  const YTDlpWrap = require('yt-dlp-wrap').default;
   const localBinary = path.join(DATA_DIR, isWin ? 'yt-dlp.exe' : 'yt-dlp');
   
   let needsDownload = true;
@@ -222,8 +238,8 @@ ensureYtdlp().catch(err => {
   console.error('Failed to setup yt-dlp:', err);
 });
 
-// Build common yt-dlp arguments with cookies and custom args
-function buildYtdlpArgs(baseArgs = [], sourceUrl = '', requestCookiesPath = '', requestCustomArgs = '') {
+// Build common yt-dlp arguments with cookies, PO Token, Data Sync ID, and custom args
+function buildYtdlpArgs(baseArgs = [], sourceUrl = '', requestCookiesPath = '', requestCustomArgs = '', requestPoToken = '', requestDataSyncId = '') {
   let args = [...baseArgs];
   const isYouTubeSource = /youtube\.com|youtu\.be/i.test(sourceUrl || '');
   
@@ -232,8 +248,35 @@ function buildYtdlpArgs(baseArgs = [], sourceUrl = '', requestCookiesPath = '', 
     args.push('--cookies', requestCookiesPath);
   } else if (settings.cookiesFilePath && fs.existsSync(settings.cookiesFilePath)) {
     args.push('--cookies', settings.cookiesFilePath);
-  } else if (isYouTubeSource) {
-    args.push('--extractor-args', 'youtube:player_client=android,web');
+  }
+  
+  // Build extractor args for YouTube
+  if (isYouTubeSource) {
+    const extractorParts = [];
+    
+    // Add PO Token if available
+    const poToken = requestPoToken || settings.poToken || '';
+    if (poToken) {
+      extractorParts.push(`po_token=web+${poToken}`);
+    }
+    
+    // Add Data Sync ID if available
+    const dataSyncId = requestDataSyncId || settings.dataSyncId || '';
+    if (dataSyncId) {
+      extractorParts.push(`data_sync_id=${dataSyncId}`);
+    }
+    
+    // Set player client - use 'web' when we have PO token, otherwise try multiple clients
+    if (poToken) {
+      extractorParts.push('player_client=web');
+    } else if (!requestCookiesPath && !(settings.cookiesFilePath && fs.existsSync(settings.cookiesFilePath))) {
+      // No cookies and no PO token - try multiple clients as fallback
+      extractorParts.push('player_client=web,android');
+    }
+    
+    if (extractorParts.length > 0) {
+      args.push('--extractor-args', `youtube:${extractorParts.join(';')}`);
+    }
   }
   
   // Add custom yt-dlp arguments if configured
@@ -327,7 +370,7 @@ app.post('/api/is-channel-url', (req, res) => {
 
 // Search YouTube
 app.post('/api/search', async (req, res) => {
-  const { query, cookies } = req.body;
+  const { query, cookies, poToken, dataSyncId } = req.body;
   let tempCookiesPath = '';
   try {
     if (cookies) {
@@ -343,7 +386,7 @@ app.post('/api/search', async (req, res) => {
       '--print', '%(id)s\t%(title)s\t%(duration_string)s\t%(channel)s\t%(view_count)s',
       '--no-warnings'
     ];
-    const args = buildYtdlpArgs(baseArgs, 'https://www.youtube.com', tempCookiesPath);
+    const args = buildYtdlpArgs(baseArgs, 'https://www.youtube.com', tempCookiesPath, '', poToken, dataSyncId);
     
     const result = await runYtdlp(args);
     if (result.success && result.output.trim()) {
@@ -376,7 +419,7 @@ app.post('/api/search', async (req, res) => {
 
 // Get video info
 app.post('/api/video-info', async (req, res) => {
-  const { url, cookies } = req.body;
+  const { url, cookies, poToken, dataSyncId } = req.body;
   let tempCookiesPath = '';
   try {
     if (cookies) {
@@ -392,7 +435,7 @@ app.post('/api/video-info', async (req, res) => {
       '--no-playlist',
       url
     ];
-    const args = buildYtdlpArgs(baseArgs, url, tempCookiesPath);
+    const args = buildYtdlpArgs(baseArgs, url, tempCookiesPath, '', poToken, dataSyncId);
     
     const result = await runYtdlp(args);
     const parts = result.output.trim().split('\t');
@@ -421,7 +464,7 @@ app.post('/api/video-info', async (req, res) => {
       });
     } else {
       const error = result.error?.includes('Sign in to confirm')
-        ? (cookies ? 'YouTube still requires authentication. Your uploaded cookies file may be expired or invalid. Please re-export cookies from YouTube while logged in.' : 'YouTube requires authentication. Please add cookies in Settings.')
+        ? (cookies ? 'YouTube still requires authentication. Your uploaded cookies file may be expired or invalid. Please re-export cookies from YouTube while logged in.' : 'YouTube requires authentication. Please add cookies or PO Token in Settings.')
         : (result.error || 'Failed to get video info');
       res.json({ success: false, error });
     }
@@ -436,7 +479,7 @@ app.post('/api/video-info', async (req, res) => {
 
 // Get playlist videos
 app.post('/api/playlist-videos', async (req, res) => {
-  const { url, cookies } = req.body;
+  const { url, cookies, poToken, dataSyncId } = req.body;
   let tempCookiesPath = '';
   try {
     if (cookies) {
@@ -451,7 +494,7 @@ app.post('/api/playlist-videos', async (req, res) => {
       '--print', '%(id)s\t%(title)s\t%(duration_string)s',
       url
     ];
-    const args = buildYtdlpArgs(baseArgs, url, tempCookiesPath);
+    const args = buildYtdlpArgs(baseArgs, url, tempCookiesPath, '', poToken, dataSyncId);
     
     const result = await runYtdlp(args);
     if (result.success) {
@@ -482,7 +525,7 @@ app.post('/api/playlist-videos', async (req, res) => {
 
 // Get channel videos
 app.post('/api/channel-videos', async (req, res) => {
-  const { url, limit, cookies } = req.body;
+  const { url, limit, cookies, poToken, dataSyncId } = req.body;
   let tempCookiesPath = '';
   try {
     if (cookies) {
@@ -499,7 +542,7 @@ app.post('/api/channel-videos', async (req, res) => {
       '--print', '%(id)s\t%(title)s\t%(duration_string)s',
       channelUrl
     ];
-    const args = buildYtdlpArgs(baseArgs, channelUrl, tempCookiesPath);
+    const args = buildYtdlpArgs(baseArgs, channelUrl, tempCookiesPath, '', poToken, dataSyncId);
     
     const result = await runYtdlp(args);
     if (result.success) {
@@ -533,7 +576,7 @@ app.post('/api/download/start', async (req, res) => {
   let tempCookiesPath = '';
   try {
     const options = req.body;
-    const { url, format, type, downloadId, title, trimStart, trimEnd, subtitleLang, embedSubs, cookies, customYtdlpArgs } = options;
+    const { url, format, type, downloadId, title, trimStart, trimEnd, subtitleLang, embedSubs, cookies, customYtdlpArgs, poToken, dataSyncId } = options;
     const id = downloadId || Date.now().toString();
     
     // Check if already active/downloading
@@ -606,7 +649,7 @@ app.post('/api/download/start', async (req, res) => {
     }
     
     baseArgs.push(url);
-    const args = buildYtdlpArgs(baseArgs, url, tempCookiesPath, customYtdlpArgs);
+    const args = buildYtdlpArgs(baseArgs, url, tempCookiesPath, customYtdlpArgs, poToken, dataSyncId);
     
     console.log('Starting download:', args.join(' '));
     
@@ -1089,11 +1132,33 @@ app.get('/api/check-update', async (req, res) => {
 // Update yt-dlp
 app.post('/api/update-ytdlp', async (req, res) => {
   try {
+    const isWin = process.platform === 'win32';
+    
+    if (!isWin) {
+      // On Linux/Mac, try pip upgrade first (preferred - includes EJS scripts)
+      try {
+        execSync('pip3 install --break-system-packages -U "yt-dlp[default]"', { stdio: 'pipe', timeout: 120000 });
+        const newVersion = execSync('yt-dlp --version', { stdio: 'pipe' }).toString().trim();
+        ytdlpPath = 'yt-dlp';
+        console.log('yt-dlp updated via pip to:', newVersion);
+        res.json({ success: true, version: newVersion });
+        return;
+      } catch (pipErr) {
+        console.log('pip upgrade failed, falling back to GitHub download:', pipErr.message);
+      }
+    }
+    
+    // Fallback: download from GitHub
     const YTDlpWrap = require('yt-dlp-wrap').default;
-    const downloadTo = path.join(DATA_DIR, 'yt-dlp.exe');
+    const downloadTo = path.join(DATA_DIR, isWin ? 'yt-dlp.exe' : 'yt-dlp');
     await YTDlpWrap.downloadFromGithub(downloadTo);
+    if (!isWin) {
+      fs.chmodSync(downloadTo, 0o755);
+    }
     ytdlpPath = downloadTo;
-    res.json({ success: true });
+    const newVersion = execSync(`"${ytdlpPath}" --version`, { stdio: 'pipe' }).toString().trim();
+    console.log('yt-dlp updated via GitHub to:', newVersion);
+    res.json({ success: true, version: newVersion });
   } catch (error) {
     res.json({ success: false, error: error.message });
   }
@@ -1101,7 +1166,7 @@ app.post('/api/update-ytdlp', async (req, res) => {
 
 // Get subtitles
 app.post('/api/subtitles', async (req, res) => {
-  const { url, cookies } = req.body;
+  const { url, cookies, poToken, dataSyncId } = req.body;
   let tempCookiesPath = '';
   try {
     if (cookies) {
@@ -1112,7 +1177,7 @@ app.post('/api/subtitles', async (req, res) => {
     if (!ytdlpPath) await ensureYtdlp();
     
     const baseArgs = ['--list-subs', '--skip-download', url];
-    const args = buildYtdlpArgs(baseArgs, url, tempCookiesPath);
+    const args = buildYtdlpArgs(baseArgs, url, tempCookiesPath, '', poToken, dataSyncId);
     const result = await runYtdlp(args);
     
     const subtitles = [];

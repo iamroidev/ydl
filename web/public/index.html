@@ -451,7 +451,7 @@
 
           <div class="setting-group">
             <h4>YouTube Authentication</h4>
-            <p class="setting-description">If downloads fail with "Sign in to confirm you're not a bot", import your YouTube cookies.</p>
+            <p class="setting-description">If downloads fail with "Sign in to confirm you're not a bot", import your YouTube cookies. Use a browser extension like "Get cookies.txt LOCALLY" to export them.</p>
             <div class="setting-row">
               <span class="path-display" id="cookiesPathDisplay">No cookies file selected</span>
               <div class="btn-group">
@@ -460,6 +460,28 @@
                 <button class="btn-secondary danger" id="clearCookiesBtn" style="display: none;">Clear</button>
               </div>
             </div>
+          </div>
+
+          <div class="setting-group">
+            <h4>YouTube PO Token</h4>
+            <p class="setting-description">Required when hosting on cloud servers. Get your PO Token from <a href="https://github.com/yt-dlp/yt-dlp/wiki/Extractors#po-token-guide" target="_blank" style="color: var(--accent-primary); text-decoration: underline;">the yt-dlp wiki</a>. You can use tools like <code>yt-dlp --extractor-args "youtube:player-client=web" --print-po-token URL</code> or the browser-based token generator.</p>
+            <div class="setting-row">
+              <input type="text" id="poTokenInput" class="setting-input" placeholder="Paste your PO Token here...">
+              <button class="btn-secondary" id="savePoTokenBtn">Save</button>
+              <button class="btn-secondary danger" id="clearPoTokenBtn" style="display: none;">Clear</button>
+            </div>
+            <span class="path-display" id="poTokenStatus" style="margin-top: 6px; font-size: 0.8rem;">No PO Token set</span>
+          </div>
+
+          <div class="setting-group">
+            <h4>YouTube Data Sync ID</h4>
+            <p class="setting-description">If you see "Missing required Data Sync ID" errors, paste your Data Sync ID here. Get it from your YouTube account's network requests.</p>
+            <div class="setting-row">
+              <input type="text" id="dataSyncIdInput" class="setting-input" placeholder="Paste your Data Sync ID here...">
+              <button class="btn-secondary" id="saveDataSyncIdBtn">Save</button>
+              <button class="btn-secondary danger" id="clearDataSyncIdBtn" style="display: none;">Clear</button>
+            </div>
+            <span class="path-display" id="dataSyncIdStatus" style="margin-top: 6px; font-size: 0.8rem;">No Data Sync ID set</span>
           </div>
 
           <div class="setting-group">

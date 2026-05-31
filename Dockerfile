@@ -1,15 +1,17 @@
 FROM node:20-slim
 
-# Install dependencies (Python, ffmpeg, curl)
+# Install dependencies (Python, ffmpeg, curl, pip)
 RUN apt-get update && apt-get install -y \
     python3 \
     python3-pip \
+    python3-venv \
     ffmpeg \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Install yt-dlp globally
-RUN curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp && chmod a+rx /usr/local/bin/yt-dlp
+# Install yt-dlp via pip with EJS support for YouTube challenge solving
+# The [default] extra bundles the JavaScript solver scripts needed for YouTube's n-parameter challenge
+RUN pip3 install --break-system-packages "yt-dlp[default]"
 
 # Set working directory
 WORKDIR /app
