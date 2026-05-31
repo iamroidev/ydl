@@ -45,6 +45,11 @@ self.addEventListener('activate', (event) => {
 
 // Fetch event - serve from cache first, fall back to network
 self.addEventListener('fetch', (event) => {
+  // Only handle GET requests
+  if (event.request.method !== 'GET') {
+    return;
+  }
+
   // Skip cross-origin requests like YouTube thumbnails
   if (event.request.url.startsWith('http') && 
       !event.request.url.startsWith(self.location.origin)) {
