@@ -1619,6 +1619,65 @@ body {
   color: var(--text-secondary);
 }
 
+/* Sidebar Collapse System */
+.sidebar {
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.sidebar .nav-btn {
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.sidebar .nav-btn span {
+  transition: opacity 0.2s ease, width 0.2s ease;
+  opacity: 1;
+}
+
+.sidebar-footer {
+  transition: opacity 0.2s ease, max-height 0.2s ease, padding 0.2s ease;
+  max-height: 80px;
+  overflow: hidden;
+}
+
+.collapse-icon {
+  transition: transform 0.3s ease;
+}
+
+/* Collapsed Sidebar State styling */
+.sidebar-collapsed .sidebar {
+  width: 68px !important;
+}
+
+.sidebar-collapsed .sidebar .nav-btn {
+  justify-content: center;
+  padding: 12px 14px;
+  gap: 0;
+}
+
+.sidebar-collapsed .sidebar .nav-btn span {
+  opacity: 0;
+  width: 0;
+  pointer-events: none;
+  display: none !important;
+}
+
+.sidebar-collapsed .sidebar-footer {
+  opacity: 0;
+  max-height: 0;
+  padding-top: 0;
+  margin-top: 0;
+  border-top: none;
+  pointer-events: none;
+}
+
+.sidebar-collapsed .sidebar .badge {
+  right: 6px;
+  top: 6px;
+  font-size: 9px;
+  padding: 1px 4px;
+}
+
 /* Responsive */
 /* Responsive Layout Changes for Tablet & Mobile */
 @media (max-width: 768px) {
@@ -1636,6 +1695,11 @@ body {
 
   /* Hide default top status bar on mobile */
   .server-bar {
+    display: none !important;
+  }
+
+  /* Hide sidebar collapse button on mobile/bottom navigation tab bar */
+  #sidebarCollapseBtn {
     display: none !important;
   }
 
