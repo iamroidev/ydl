@@ -421,7 +421,7 @@ app.post('/api/video-info', async (req, res) => {
       });
     } else {
       const error = result.error?.includes('Sign in to confirm')
-        ? 'YouTube requires authentication. Please add cookies in Settings.'
+        ? (cookies ? 'YouTube still requires authentication. Your uploaded cookies file may be expired or invalid. Please re-export cookies from YouTube while logged in.' : 'YouTube requires authentication. Please add cookies in Settings.')
         : (result.error || 'Failed to get video info');
       res.json({ success: false, error });
     }
@@ -765,7 +765,11 @@ app.post('/api/download/start', async (req, res) => {
           addToHistory({ id, title, url, type, filePath: outputFilePath, format: format?.quality || (type === 'audio' ? 'MP3' : 'Best') });
         } else {
           let error = errorOutput || 'Download failed';
-          if (errorOutput.includes('Sign in to confirm')) error = 'YouTube requires authentication. Please add cookies in Settings.';
+          if (errorOutput.includes('Sign in to confirm')) {
+            error = cookies 
+              ? 'YouTube still requires authentication. Your uploaded cookies may be expired or invalid. Please re-export cookies from YouTube while logged in.'
+              : 'YouTube requires authentication. Please add cookies in Settings.';
+          }
           else if (errorOutput.includes('Video unavailable')) error = 'This video is unavailable or private.';
           else if (errorOutput.includes('age-restricted')) error = 'This video is age-restricted. Add cookies to access it.';
           
