@@ -1255,15 +1255,53 @@ setInterval(() => {
   }
 }, 60000);
 
-// Upload cookies file
+// Convert standard HTTP Cookie header string to Netscape format
+function convertToNetscape(cookieString) {
+  const lines = [
+    '# Netscape HTTP Cookie File',
+    '# http://curl.haxx.se/rfc/cookie_spec.html',
+    '# This is a generated file! Do not edit.'
+  ];
+  
+  const pairs = cookieString.split(';');
+  for (const pair of pairs) {
+    const trimmed = pair.trim();
+    if (!trimmed) continue;
+    
+    const eqIdx = trimmed.indexOf('=');
+    if (eqIdx === -1) continue;
+    
+    const name = trimmed.substring(0, eqIdx).trim();
+    const value = trimmed.substring(eqIdx + 1).trim();
+    
+    if (name && value) {
+      // Format: domain \t isDomain(TRUE/FALSE) \t path \t secure(TRUE/FALSE) \t expiration \t name \t value
+      lines.push(`.youtube.com\tTRUE\t/\tTRUE\t2000000000\t${name}\t${value}`);
+    }
+  }
+  
+  return lines.join('\n');
+}
+
+// Upload cookies file (or process pasted raw cookie text)
 app.post('/api/upload-cookies', (req, res) => {
   const { content, filename } = req.body;
   try {
     const cookiesDir = path.join(DATA_DIR, 'cookies');
     if (!fs.existsSync(cookiesDir)) fs.mkdirSync(cookiesDir, { recursive: true });
     
+    let finalContent = content;
+    const trimmed = content.trim();
+    
+    // Automatically convert if it looks like a raw HTTP Cookie header (e.g., GPS=1; YSC=abc)
+    // rather than a Netscape tab-separated text file.
+    if (!trimmed.startsWith('#') && trimmed.includes('=') && (trimmed.includes(';') || trimmed.split('=').length === 2)) {
+      finalContent = convertToNetscape(trimmed);
+      console.log('Converted raw HTTP cookies header to Netscape format.');
+    }
+    
     const filePath = path.join(cookiesDir, filename || 'cookies.txt');
-    fs.writeFileSync(filePath, content);
+    fs.writeFileSync(filePath, finalContent);
     
     settings.cookiesFilePath = filePath;
     saveSettings();

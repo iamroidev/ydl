@@ -1379,6 +1379,28 @@ document.getElementById('clearCookiesBtn')?.addEventListener('click', async () =
   showToast('Cookies file cleared', 'info');
 });
 
+// Copy bookmarklet code to clipboard
+document.getElementById('copyBookmarkletCodeBtn')?.addEventListener('click', () => {
+  const code = 'javascript:(function(){const c=document.cookie;if(!c){alert("No cookies found. Login to YouTube first!");return;}const el=document.createElement("textarea");el.value=c;document.body.appendChild(el);el.select();document.execCommand("copy");document.body.removeChild(el);alert("YouTube cookies copied!");})()';
+  navigator.clipboard.writeText(code).then(() => {
+    showToast('Bookmarklet script copied to clipboard!', 'success');
+    const badge = document.getElementById('scriptCopiedBadge');
+    if (badge) {
+      badge.style.display = 'inline';
+      setTimeout(() => { badge.style.display = 'none'; }, 2000);
+    }
+  }).catch(() => {
+    // Fallback
+    const el = document.createElement("textarea");
+    el.value = code;
+    document.body.appendChild(el);
+    el.select();
+    document.execCommand("copy");
+    document.body.removeChild(el);
+    showToast('Bookmarklet script copied!', 'success');
+  });
+});
+
 // Save cookies pasted directly as text
 document.getElementById('saveCookiesTextBtn')?.addEventListener('click', async () => {
   const text = document.getElementById('cookiesTextInput').value.trim();
