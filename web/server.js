@@ -556,9 +556,12 @@ app.post('/api/download/start', async (req, res) => {
       '-o', outputTemplate,
       '--newline',
       '--progress-template', 'download:%(progress._percent_str)s %(progress._speed_str)s %(progress._eta_str)s',
-      '--ffmpeg-location', resolvedFfmpegPath,
       '--no-playlist'
     ];
+    
+    if (resolvedFfmpegPath && resolvedFfmpegPath !== 'ffmpeg') {
+      baseArgs.push('--ffmpeg-location', resolvedFfmpegPath);
+    }
     
     if (subtitleLang) {
       baseArgs.push('--write-subs', '--sub-lang', subtitleLang);
