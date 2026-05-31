@@ -1,14 +1,18 @@
 FROM node:20-slim
 
-# Install dependencies (Python, ffmpeg, curl, pip, git for cloning bgutil)
+# Install dependencies (Python, ffmpeg, curl, unzip, pip, git for cloning bgutil)
 RUN apt-get update && apt-get install -y \
     python3 \
     python3-pip \
     python3-venv \
     ffmpeg \
     curl \
+    unzip \
     git \
     && rm -rf /var/lib/apt/lists/*
+
+# Install Deno (needed for yt-dlp to solve EJS challenges automatically)
+RUN curl -fsSL https://deno.land/install.sh | DENO_INSTALL=/usr/local sh
 
 # Install yt-dlp via pip with EJS support and the POT plugin
 RUN pip3 install --break-system-packages "yt-dlp[default]" bgutil-ytdlp-pot-provider

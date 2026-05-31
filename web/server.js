@@ -252,6 +252,9 @@ function buildYtdlpArgs(baseArgs = [], sourceUrl = '', requestCookiesPath = '', 
   
   // Build extractor args for YouTube
   if (isYouTubeSource) {
+    // Explicitly configure JS runtimes for EJS solver (Deno is preferred/automatic, Node is fallback)
+    args.push('--js-runtimes', 'deno,node');
+
     const extractorParts = [];
     
     // Add PO Token if available
