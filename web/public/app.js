@@ -26,10 +26,16 @@ if ('Notification' in window && Notification.permission === 'default') {
 // ----- API Helper Functions -----
 async function apiPost(path, data) {
   try {
+    const cookies = localStorage.getItem('youtube_cookies');
+    const customYtdlpArgs = localStorage.getItem('custom_ytdlp_args');
+    const payload = { ...data };
+    if (cookies) payload.cookies = cookies;
+    if (customYtdlpArgs) payload.customYtdlpArgs = customYtdlpArgs;
+
     const response = await fetch(`${API_BASE}${path}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
+      body: JSON.stringify(payload)
     });
     return await response.json();
   } catch (error) {
@@ -1172,7 +1178,14 @@ async function loadSettings() {
     
     const cookiesDisplay = document.getElementById('cookiesPathDisplay');
     const clearCookiesBtn = document.getElementById('clearCookiesBtn');
-    if (settings.cookiesFilePath) {
+    
+    // Check localStorage first
+    const localCookies = localStorage.getItem('youtube_cookies');
+    const localCookiesName = localStorage.getItem('youtube_cookies_name') || 'cookies.txt';
+    if (localCookies) {
+      cookiesDisplay.textContent = `Local: ${localCookiesName} (Saved in Browser)`;
+      clearCookiesBtn.style.display = 'inline-flex';
+    } else if (settings.cookiesFilePath) {
       cookiesDisplay.textContent = settings.cookiesFilePath;
       clearCookiesBtn.style.display = 'inline-flex';
     } else {
@@ -1180,7 +1193,8 @@ async function loadSettings() {
       clearCookiesBtn.style.display = 'none';
     }
     
-    document.getElementById('customYtdlpArgs').value = settings.customYtdlpArgs || '';
+    const localCustomArgs = localStorage.getItem('custom_ytdlp_args');
+    document.getElementById('customYtdlpArgs').value = localCustomArgs !== null ? localCustomArgs : (settings.customYtdlpArgs || '');
     document.getElementById('versionDisplay').textContent = 'v2.4.0';
   } catch (error) {
     console.error('Failed to load settings:', error);
@@ -1204,15 +1218,15 @@ document.getElementById('cookiesFileInput')?.addEventListener('change', async (e
   const file = e.target.files[0];
   if (!file) return;
   
-  const formData = new FormData();
-  formData.append('cookies', file);
-  
   try {
     // Read file and send as text
     const text = await file.text();
-    const result = await apiPost('/api/settings', { cookiesFileContent: text });
     
-    // Upload the file content to server
+    // Save to localStorage
+    localStorage.setItem('youtube_cookies', text);
+    localStorage.setItem('youtube_cookies_name', file.name);
+    
+    // Upload the file content to server (backup)
     const response = await fetch(`${API_BASE}/api/upload-cookies`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1221,12 +1235,13 @@ document.getElementById('cookiesFileInput')?.addEventListener('change', async (e
     
     const uploadResult = await response.json();
     
+    document.getElementById('cookiesPathDisplay').textContent = `Local: ${file.name} (Saved in Browser)`;
+    document.getElementById('clearCookiesBtn').style.display = 'inline-flex';
+    
     if (uploadResult.success) {
-      document.getElementById('cookiesPathDisplay').textContent = uploadResult.path || 'Cookies file uploaded';
-      document.getElementById('clearCookiesBtn').style.display = 'inline-flex';
-      showToast('Cookies file uploaded. Try downloading again!', 'success');
+      showToast('Cookies saved in browser and server!', 'success');
     } else {
-      showToast('Failed to upload cookies file', 'error');
+      showToast('Cookies saved locally in browser!', 'success');
     }
   } catch (err) {
     showToast('Error reading cookies file', 'error');
@@ -1234,7 +1249,11 @@ document.getElementById('cookiesFileInput')?.addEventListener('change', async (e
 });
 
 document.getElementById('clearCookiesBtn')?.addEventListener('click', async () => {
-  await apiPost('/api/settings', { cookiesFilePath: '' });
+  localStorage.removeItem('youtube_cookies');
+  localStorage.removeItem('youtube_cookies_name');
+  try {
+    await apiPost('/api/settings', { cookiesFilePath: '' });
+  } catch (e) {}
   document.getElementById('cookiesPathDisplay').textContent = 'No cookies file selected';
   document.getElementById('clearCookiesBtn').style.display = 'none';
   showToast('Cookies file cleared', 'info');
@@ -1243,8 +1262,11 @@ document.getElementById('clearCookiesBtn')?.addEventListener('click', async () =
 // Custom yt-dlp args
 document.getElementById('saveCustomArgsBtn')?.addEventListener('click', async () => {
   const customArgs = document.getElementById('customYtdlpArgs').value;
-  await apiPost('/api/settings', { customYtdlpArgs: customArgs });
-  showToast('Custom arguments saved', 'success');
+  localStorage.setItem('custom_ytdlp_args', customArgs);
+  try {
+    await apiPost('/api/settings', { customYtdlpArgs: customArgs });
+  } catch (e) {}
+  showToast('Custom arguments saved locally and on server', 'success');
 });
 
 // Update yt-dlp

@@ -1,6 +1,7 @@
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 const { spawn, execSync } = require('child_process');
 const cors = require('cors');
 
@@ -155,6 +156,14 @@ function saveScheduled(scheduled) {
 
 // Get ffmpeg path
 function getFfmpegPath() {
+  if (process.platform !== 'win32') {
+    try {
+      execSync('ffmpeg -version', { stdio: 'ignore' });
+      return 'ffmpeg';
+    } catch (e) {
+      // fallback to ffmpeg-static
+    }
+  }
   try {
     const ffmpegPath = require('ffmpeg-static');
     return ffmpegPath;
@@ -214,21 +223,23 @@ ensureYtdlp().catch(err => {
 });
 
 // Build common yt-dlp arguments with cookies and custom args
-function buildYtdlpArgs(baseArgs = [], sourceUrl = '') {
+function buildYtdlpArgs(baseArgs = [], sourceUrl = '', requestCookiesPath = '', requestCustomArgs = '') {
   let args = [...baseArgs];
   const isYouTubeSource = /youtube\.com|youtu\.be/i.test(sourceUrl || '');
   
   // Add cookies file if configured
-  const hasCookies = settings.cookiesFilePath && fs.existsSync(settings.cookiesFilePath);
-  if (hasCookies) {
+  if (requestCookiesPath) {
+    args.push('--cookies', requestCookiesPath);
+  } else if (settings.cookiesFilePath && fs.existsSync(settings.cookiesFilePath)) {
     args.push('--cookies', settings.cookiesFilePath);
   } else if (isYouTubeSource) {
     args.push('--extractor-args', 'youtube:player_client=android,web');
   }
   
   // Add custom yt-dlp arguments if configured
-  if (settings.customYtdlpArgs && settings.customYtdlpArgs.trim()) {
-    const customArgsArray = settings.customYtdlpArgs.match(/(?:[^\s"']+|"[^"]*"|'[^']*')+/g) || [];
+  const customArgs = requestCustomArgs || settings.customYtdlpArgs;
+  if (customArgs && customArgs.trim()) {
+    const customArgsArray = customArgs.match(/(?:[^\s"']+|"[^"]*"|'[^']*')+/g) || [];
     args.push(...customArgsArray.map(arg => arg.replace(/^["']|["']$/g, '')));
   }
   
@@ -316,8 +327,14 @@ app.post('/api/is-channel-url', (req, res) => {
 
 // Search YouTube
 app.post('/api/search', async (req, res) => {
-  const { query } = req.body;
+  const { query, cookies } = req.body;
+  let tempCookiesPath = '';
   try {
+    if (cookies) {
+      const uniqueId = Date.now() + Math.random().toString(36).substring(7);
+      tempCookiesPath = path.join(os.tmpdir(), `cookies_${uniqueId}.txt`);
+      fs.writeFileSync(tempCookiesPath, cookies);
+    }
     if (!ytdlpPath) await ensureYtdlp();
     
     const baseArgs = [
@@ -326,7 +343,7 @@ app.post('/api/search', async (req, res) => {
       '--print', '%(id)s\t%(title)s\t%(duration_string)s\t%(channel)s\t%(view_count)s',
       '--no-warnings'
     ];
-    const args = buildYtdlpArgs(baseArgs, 'https://www.youtube.com');
+    const args = buildYtdlpArgs(baseArgs, 'https://www.youtube.com', tempCookiesPath);
     
     const result = await runYtdlp(args);
     if (result.success && result.output.trim()) {
@@ -350,13 +367,23 @@ app.post('/api/search', async (req, res) => {
     }
   } catch (error) {
     res.json({ success: false, error: error.message });
+  } finally {
+    if (tempCookiesPath && fs.existsSync(tempCookiesPath)) {
+      try { fs.unlinkSync(tempCookiesPath); } catch (e) {}
+    }
   }
 });
 
 // Get video info
 app.post('/api/video-info', async (req, res) => {
-  const { url } = req.body;
+  const { url, cookies } = req.body;
+  let tempCookiesPath = '';
   try {
+    if (cookies) {
+      const uniqueId = Date.now() + Math.random().toString(36).substring(7);
+      tempCookiesPath = path.join(os.tmpdir(), `cookies_${uniqueId}.txt`);
+      fs.writeFileSync(tempCookiesPath, cookies);
+    }
     if (!ytdlpPath) await ensureYtdlp();
     
     const baseArgs = [
@@ -365,7 +392,7 @@ app.post('/api/video-info', async (req, res) => {
       '--no-playlist',
       url
     ];
-    const args = buildYtdlpArgs(baseArgs, url);
+    const args = buildYtdlpArgs(baseArgs, url, tempCookiesPath);
     
     const result = await runYtdlp(args);
     const parts = result.output.trim().split('\t');
@@ -400,13 +427,23 @@ app.post('/api/video-info', async (req, res) => {
     }
   } catch (error) {
     res.json({ success: false, error: error.message });
+  } finally {
+    if (tempCookiesPath && fs.existsSync(tempCookiesPath)) {
+      try { fs.unlinkSync(tempCookiesPath); } catch (e) {}
+    }
   }
 });
 
 // Get playlist videos
 app.post('/api/playlist-videos', async (req, res) => {
-  const { url } = req.body;
+  const { url, cookies } = req.body;
+  let tempCookiesPath = '';
   try {
+    if (cookies) {
+      const uniqueId = Date.now() + Math.random().toString(36).substring(7);
+      tempCookiesPath = path.join(os.tmpdir(), `cookies_${uniqueId}.txt`);
+      fs.writeFileSync(tempCookiesPath, cookies);
+    }
     if (!ytdlpPath) await ensureYtdlp();
     
     const baseArgs = [
@@ -414,7 +451,7 @@ app.post('/api/playlist-videos', async (req, res) => {
       '--print', '%(id)s\t%(title)s\t%(duration_string)s',
       url
     ];
-    const args = buildYtdlpArgs(baseArgs, url);
+    const args = buildYtdlpArgs(baseArgs, url, tempCookiesPath);
     
     const result = await runYtdlp(args);
     if (result.success) {
@@ -436,13 +473,23 @@ app.post('/api/playlist-videos', async (req, res) => {
     }
   } catch (error) {
     res.json({ success: false, error: error.message });
+  } finally {
+    if (tempCookiesPath && fs.existsSync(tempCookiesPath)) {
+      try { fs.unlinkSync(tempCookiesPath); } catch (e) {}
+    }
   }
 });
 
 // Get channel videos
 app.post('/api/channel-videos', async (req, res) => {
-  const { url, limit } = req.body;
+  const { url, limit, cookies } = req.body;
+  let tempCookiesPath = '';
   try {
+    if (cookies) {
+      const uniqueId = Date.now() + Math.random().toString(36).substring(7);
+      tempCookiesPath = path.join(os.tmpdir(), `cookies_${uniqueId}.txt`);
+      fs.writeFileSync(tempCookiesPath, cookies);
+    }
     if (!ytdlpPath) await ensureYtdlp();
     
     const channelUrl = url.includes('/videos') ? url : url + '/videos';
@@ -452,7 +499,7 @@ app.post('/api/channel-videos', async (req, res) => {
       '--print', '%(id)s\t%(title)s\t%(duration_string)s',
       channelUrl
     ];
-    const args = buildYtdlpArgs(baseArgs, channelUrl);
+    const args = buildYtdlpArgs(baseArgs, channelUrl, tempCookiesPath);
     
     const result = await runYtdlp(args);
     if (result.success) {
@@ -474,19 +521,30 @@ app.post('/api/channel-videos', async (req, res) => {
     }
   } catch (error) {
     res.json({ success: false, error: error.message });
+  } finally {
+    if (tempCookiesPath && fs.existsSync(tempCookiesPath)) {
+      try { fs.unlinkSync(tempCookiesPath); } catch (e) {}
+    }
   }
 });
 
 // Start download (POST)
 app.post('/api/download/start', async (req, res) => {
+  let tempCookiesPath = '';
   try {
     const options = req.body;
-    const { url, format, type, downloadId, title, trimStart, trimEnd, subtitleLang, embedSubs } = options;
+    const { url, format, type, downloadId, title, trimStart, trimEnd, subtitleLang, embedSubs, cookies, customYtdlpArgs } = options;
     const id = downloadId || Date.now().toString();
     
     // Check if already active/downloading
     if (activeDownloads.has(id)) {
       return res.json({ success: true, id, message: 'Download already in progress.' });
+    }
+    
+    if (cookies) {
+      const uniqueId = Date.now() + Math.random().toString(36).substring(7);
+      tempCookiesPath = path.join(os.tmpdir(), `cookies_${uniqueId}.txt`);
+      fs.writeFileSync(tempCookiesPath, cookies);
     }
     
     if (!ytdlpPath) await ensureYtdlp();
@@ -545,7 +603,7 @@ app.post('/api/download/start', async (req, res) => {
     }
     
     baseArgs.push(url);
-    const args = buildYtdlpArgs(baseArgs, url);
+    const args = buildYtdlpArgs(baseArgs, url, tempCookiesPath, customYtdlpArgs);
     
     console.log('Starting download:', args.join(' '));
     
@@ -645,6 +703,10 @@ app.post('/api/download/start', async (req, res) => {
     });
     
     proc.on('close', (code) => {
+      if (tempCookiesPath && fs.existsSync(tempCookiesPath)) {
+        try { fs.unlinkSync(tempCookiesPath); } catch (e) {}
+      }
+      
       activeDownloads.delete(id);
       
       if (!outputFilePath) {
@@ -715,6 +777,10 @@ app.post('/api/download/start', async (req, res) => {
     });
     
     proc.on('error', (err) => {
+      if (tempCookiesPath && fs.existsSync(tempCookiesPath)) {
+        try { fs.unlinkSync(tempCookiesPath); } catch (e) {}
+      }
+      
       activeDownloads.delete(id);
       const state = downloadsMap.get(id);
       if (state) {
@@ -731,6 +797,9 @@ app.post('/api/download/start', async (req, res) => {
     res.json({ success: true, id });
     
   } catch (error) {
+    if (tempCookiesPath && fs.existsSync(tempCookiesPath)) {
+      try { fs.unlinkSync(tempCookiesPath); } catch (e) {}
+    }
     res.json({ success: false, error: error.message });
   }
 });
@@ -783,10 +852,32 @@ app.get('/api/download/file/:token/:filename', (req, res) => {
   }
 });
 
-// List served files (cleanup old token mappings after 1 hour)
+// Function to clean up downloads directory by deleting files older than 1 hour
+function cleanUpDownloadsDir() {
+  try {
+    if (fs.existsSync(DOWNLOADS_DIR)) {
+      const files = fs.readdirSync(DOWNLOADS_DIR);
+      const now = Date.now();
+      files.forEach(file => {
+        const filePath = path.join(DOWNLOADS_DIR, file);
+        const stat = fs.statSync(filePath);
+        // Delete files older than 1 hour (3600000 ms)
+        if (now - stat.mtime.getTime() > 3600000) {
+          fs.unlinkSync(filePath);
+          console.log(`Cleaned up old download file: ${file}`);
+        }
+      });
+    }
+  } catch (err) {
+    console.error('Error cleaning up downloads directory:', err);
+  }
+}
+
+// List served files (cleanup old token mappings and files after 1 hour)
 setInterval(() => {
   completedDownloads.clear();
-  console.log('Cleared completed download token cache');
+  cleanUpDownloadsDir();
+  console.log('Cleared completed download token cache and cleaned up downloads directory');
 }, 3600000);
 
 // Get active and recent downloads status
@@ -1003,11 +1094,18 @@ app.post('/api/update-ytdlp', async (req, res) => {
 
 // Get subtitles
 app.post('/api/subtitles', async (req, res) => {
-  const { url } = req.body;
+  const { url, cookies } = req.body;
+  let tempCookiesPath = '';
   try {
+    if (cookies) {
+      const uniqueId = Date.now() + Math.random().toString(36).substring(7);
+      tempCookiesPath = path.join(os.tmpdir(), `cookies_${uniqueId}.txt`);
+      fs.writeFileSync(tempCookiesPath, cookies);
+    }
     if (!ytdlpPath) await ensureYtdlp();
     
-    const args = ['--list-subs', '--skip-download', url];
+    const baseArgs = ['--list-subs', '--skip-download', url];
+    const args = buildYtdlpArgs(baseArgs, url, tempCookiesPath);
     const result = await runYtdlp(args);
     
     const subtitles = [];
@@ -1033,6 +1131,10 @@ app.post('/api/subtitles', async (req, res) => {
     res.json({ success: true, subtitles });
   } catch (error) {
     res.json({ success: true, subtitles: [] });
+  } finally {
+    if (tempCookiesPath && fs.existsSync(tempCookiesPath)) {
+      try { fs.unlinkSync(tempCookiesPath); } catch (e) {}
+    }
   }
 });
 
@@ -1196,9 +1298,11 @@ app.get('/api/diagnostics', (req, res) => {
     execPath: process.execPath,
     nodeVersion: process.version,
     ytdlpPath: ytdlpPath,
+    ffmpegPath: '',
     envPath: process.env.PATH || process.env.Path || '',
     nodeVersionRun: '',
     ytdlpVersionRun: '',
+    ffmpegVersionRun: '',
     nodeExistsInExecPathDir: false,
     filesInExecPathDir: [],
     error: null
@@ -1224,6 +1328,14 @@ app.get('/api/diagnostics', (req, res) => {
     diag.ytdlpVersionRun = execSync(`"${ytdlpPath}" --version`, { env: getYtdlpEnv(), stdio: 'pipe' }).toString().trim();
   } catch (e) {
     diag.ytdlpVersionRun = 'Error: ' + e.message;
+  }
+
+  try {
+    const resolvedFfmpegPath = getFfmpegPath();
+    diag.ffmpegPath = resolvedFfmpegPath;
+    diag.ffmpegVersionRun = execSync(`"${resolvedFfmpegPath}" -version`, { env: getYtdlpEnv(), stdio: 'pipe' }).toString().trim().split('\n')[0];
+  } catch (e) {
+    diag.ffmpegVersionRun = 'Error: ' + e.message;
   }
 
   res.json(diag);
