@@ -1222,6 +1222,16 @@ document.getElementById('cookiesFileInput')?.addEventListener('change', async (e
     // Read file and send as text
     const text = await file.text();
     
+    // Simple format check
+    const trimmed = text.trim();
+    if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+      showToast('Error: Cookies file must be in Netscape (txt) format, not JSON!', 'error');
+      return;
+    }
+    if (!trimmed.includes('\t') && !trimmed.includes('youtube.com')) {
+      showToast('Warning: This file does not look like a valid Netscape cookies file.', 'warning');
+    }
+    
     // Save to localStorage
     localStorage.setItem('youtube_cookies', text);
     localStorage.setItem('youtube_cookies_name', file.name);
