@@ -1653,21 +1653,21 @@ function initSidebarCollapse() {
 // === Admin Password Gate Logic ===
 function initAdminGate() {
   const adminLoginGate = document.getElementById('adminLoginGate');
-  const actualSettingsContent = document.getElementById('actualSettingsContent');
+  const adminSettingsSection = document.getElementById('adminSettingsSection');
   const adminPasswordInput = document.getElementById('adminPasswordInput');
   const adminLoginBtn = document.getElementById('adminLoginBtn');
   const adminLogoutBtn = document.getElementById('adminLogoutBtn');
   
-  if (!adminLoginGate || !actualSettingsContent) return;
+  if (!adminLoginGate || !adminSettingsSection) return;
   
   const checkAuth = () => {
     const token = localStorage.getItem('admin_session_token');
     if (token === 'admin-authenticated-session-token') {
       adminLoginGate.style.display = 'none';
-      actualSettingsContent.style.display = 'block';
+      adminSettingsSection.style.display = 'block';
     } else {
       adminLoginGate.style.display = 'block';
-      actualSettingsContent.style.display = 'none';
+      adminSettingsSection.style.display = 'none';
     }
   };
   

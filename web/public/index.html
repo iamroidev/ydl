@@ -441,36 +441,8 @@
         <div class="tab-header">
           <h2>Settings</h2>
         </div>
-        <!-- Admin Password Gate Card -->
-        <div class="settings-content" id="adminLoginGate" style="max-width: 400px; margin: 40px auto; display: block;">
-          <div style="background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 16px; padding: 24px; text-align: center; display: flex; flex-direction: column; gap: 16px;">
-            <div style="background: rgba(233, 69, 96, 0.1); width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto;">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2">
-                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-              </svg>
-            </div>
-            <div>
-              <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 6px;">Administrator Panel Restricted</h3>
-              <p style="font-size: 12.5px; color: var(--text-muted); line-height: 1.4;">Settings are password-protected to prevent unauthorized access. Enter your admin password to continue.</p>
-            </div>
-            <div style="display: flex; flex-direction: column; gap: 10px; width: 100%;">
-              <input type="password" id="adminPasswordInput" class="setting-input" style="margin-right: 0; width: 100%; text-align: center;" placeholder="Enter Admin Password...">
-              <button class="btn-primary" id="adminLoginBtn" style="width: 100%; justify-content: center;">Unlock Panel</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- The actual settings content (hidden by default) -->
-        <div class="settings-content" id="actualSettingsContent" style="display: none;">
-          <div class="setting-group">
-            <h4>Download Location</h4>
-            <div class="setting-row">
-              <span class="path-display" id="downloadPathDisplay"></span>
-              <button class="btn-secondary" id="changeFolderBtn">Refresh</button>
-            </div>
-          </div>
-
+        <div class="settings-content">
+          <!-- Public: Theme Customizer -->
           <div class="setting-group">
             <h4>Theme Customizer</h4>
             <p class="setting-description">Select your preferred user interface style</p>
@@ -504,89 +476,120 @@
             </div>
           </div>
 
-          <div class="setting-group">
-            <h4>YouTube Authentication (Optional)</h4>
-            <p class="setting-description" style="margin-bottom: 12px;">Normal YouTube videos download <strong>100% automatically</strong> with zero setup. You only need to add cookies if you want to download <strong>age-restricted</strong> or <strong>private/member-only</strong> videos.</p>
-            
-            <div class="setting-row" style="flex-direction: column; align-items: stretch; gap: 12px; padding: 16px;">
-              <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                  <span id="cookiesStatusDot" style="width: 10px; height: 10px; border-radius: 50%; background: var(--success); display: inline-block;"></span>
-                  <span id="cookiesStatusText" style="font-weight: 600; font-size: 13.5px; color: var(--text-primary);">Automatic Bypasses Active</span>
-                </div>
-                <span class="path-display" id="cookiesPathDisplay" style="font-size: 11.5px; color: var(--text-muted); max-width: 200px; margin: 0;">No custom cookies</span>
-              </div>
-              
-              <div style="display: flex; gap: 10px; width: 100%; margin-top: 4px;">
-                <button class="btn-secondary" id="configureCookiesBtn" style="flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-                  Configure Cookies...
-                </button>
-                <button class="btn-secondary danger" id="clearCookiesBtn" style="display: none; flex: 1; align-items: center; justify-content: center; gap: 6px;">
-                  ✕ Remove Cookies
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <details style="border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin-top: 16px; background: rgba(255, 255, 255, 0.01);">
-            <summary style="cursor: pointer; font-size: 13.5px; font-weight: 600; color: var(--text-muted); outline: none; display: flex; align-items: center; gap: 6px; user-select: none;">
-              <span>⚙️ Advanced Developer Settings</span>
-            </summary>
-            <div style="margin-top: 16px; border-top: 1px dashed var(--border); padding-top: 16px; display: flex; flex-direction: column; gap: 20px;">
-              <div class="setting-group" style="margin: 0; border: none; padding: 0;">
-                <h4 style="font-size: 13px; font-weight: 600; margin-bottom: 6px;">YouTube PO Token</h4>
-                <p class="setting-description" style="font-size: 11px; margin-bottom: 8px;">Manual override for Proof-of-Origin token. Only needed if the server's automatic POT provider fails.</p>
-                <div class="setting-row">
-                  <input type="text" id="poTokenInput" class="setting-input" placeholder="Paste your PO Token here...">
-                  <button class="btn-secondary" id="savePoTokenBtn">Save</button>
-                  <button class="btn-secondary danger" id="clearPoTokenBtn" style="display: none;">Clear</button>
-                </div>
-                <span class="path-display" id="poTokenStatus" style="margin-top: 6px; font-size: 0.75rem;">No PO Token set</span>
-              </div>
-
-              <div class="setting-group" style="margin: 0; border: none; padding: 0;">
-                <h4 style="font-size: 13px; font-weight: 600; margin-bottom: 6px;">YouTube Data Sync ID</h4>
-                <p class="setting-description" style="font-size: 11px; margin-bottom: 8px;">Manual override for account sync ID. Only needed for specific restricted channel downloads.</p>
-                <div class="setting-row">
-                  <input type="text" id="dataSyncIdInput" class="setting-input" placeholder="Paste your Data Sync ID here...">
-                  <button class="btn-secondary" id="saveDataSyncIdBtn">Save</button>
-                  <button class="btn-secondary danger" id="clearDataSyncIdBtn" style="display: none;">Clear</button>
-                </div>
-                <span class="path-display" id="dataSyncIdStatus" style="margin-top: 6px; font-size: 0.75rem;">No Data Sync ID set</span>
-              </div>
-
-              <div class="setting-group" style="margin: 0; border: none; padding: 0;">
-                <h4 style="font-size: 13px; font-weight: 600; margin-bottom: 6px;">Custom yt-dlp Arguments</h4>
-                <p class="setting-description" style="font-size: 11px; margin-bottom: 8px;">Custom arguments passed to yt-dlp execution (e.g. <code>--limit-rate 1M</code>).</p>
-                <div class="setting-row">
-                  <input type="text" id="customYtdlpArgs" class="setting-input" placeholder="e.g. --geo-bypass --limit-rate 1M">
-                  <button class="btn-secondary" id="saveCustomArgsBtn">Save</button>
-                </div>
-              </div>
-            </div>
-          </details>
-
-          <div class="setting-group">
-            <h4>Maintenance</h4>
-            <div class="setting-row">
-              <span>Update yt-dlp to latest version</span>
-              <button class="btn-secondary" id="updateYtdlpBtn">Update</button>
-            </div>
-          </div>
-
-          <div class="setting-group">
-            <h4>Admin Session</h4>
-            <div class="setting-row" style="background: rgba(248, 113, 113, 0.05); border: 1px dashed rgba(248, 113, 113, 0.2);">
-              <span style="font-size: 13px; color: var(--text-secondary);">You are logged in as administrator.</span>
-              <button class="btn-secondary danger" id="adminLogoutBtn">Lock Panel</button>
-            </div>
-          </div>
-
+          <!-- Public: About -->
           <div class="setting-group">
             <h4>About</h4>
             <p class="about-text" id="versionText">RoiTube v2.4.0 Web</p>
             <p class="about-text secondary">Fast and powerful video downloader with clipboard monitor, scheduling, batch downloads, and more.</p>
+          </div>
+
+          <!-- Public/Conditional: Admin Access Password Gate Card -->
+          <div class="setting-group" id="adminLoginGate" style="display: block; margin-top: 24px;">
+            <h4>Admin Access</h4>
+            <div class="setting-row" style="flex-direction: column; align-items: stretch; gap: 12px; padding: 20px; background: rgba(255, 255, 255, 0.01); border: 1px solid var(--border); border-radius: 12px;">
+              <div>
+                <h5 style="font-size: 13.5px; font-weight: 600; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; color: var(--text-primary);">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                  Unlock Admin Settings
+                </h5>
+                <p style="font-size: 11.5px; color: var(--text-secondary); line-height: 1.4;">Access download path, server cookies, and system maintenance tools.</p>
+              </div>
+              <div style="display: flex; gap: 8px; width: 100%;">
+                <input type="password" id="adminPasswordInput" class="setting-input" style="margin-right: 0; padding: 8px 12px; font-size: 12px; flex: 1;" placeholder="Admin Password...">
+                <button class="btn-primary" id="adminLoginBtn" style="padding: 8px 16px; font-size: 12px;">Unlock</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Admin-Only Section (hidden by default) -->
+          <div id="adminSettingsSection" style="display: none; border-top: 1px dashed var(--border); padding-top: 24px; margin-top: 24px;">
+            
+            <div class="setting-group">
+              <h4>Download Location</h4>
+              <div class="setting-row">
+                <span class="path-display" id="downloadPathDisplay"></span>
+                <button class="btn-secondary" id="changeFolderBtn">Refresh</button>
+              </div>
+            </div>
+
+            <div class="setting-group">
+              <h4>YouTube Authentication (Optional)</h4>
+              <p class="setting-description" style="margin-bottom: 12px;">Normal YouTube videos download <strong>100% automatically</strong> with zero setup. You only need to add cookies if you want to download <strong>age-restricted</strong> or <strong>private/member-only</strong> videos.</p>
+              
+              <div class="setting-row" style="flex-direction: column; align-items: stretch; gap: 12px; padding: 16px;">
+                <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <span id="cookiesStatusDot" style="width: 10px; height: 10px; border-radius: 50%; background: var(--success); display: inline-block;"></span>
+                    <span id="cookiesStatusText" style="font-weight: 600; font-size: 13.5px; color: var(--text-primary);">Automatic Bypasses Active</span>
+                  </div>
+                  <span class="path-display" id="cookiesPathDisplay" style="font-size: 11.5px; color: var(--text-muted); max-width: 200px; margin: 0;">No custom cookies</span>
+                </div>
+                
+                <div style="display: flex; gap: 10px; width: 100%; margin-top: 4px;">
+                  <button class="btn-secondary" id="configureCookiesBtn" style="flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                    Configure Cookies...
+                  </button>
+                  <button class="btn-secondary danger" id="clearCookiesBtn" style="display: none; flex: 1; align-items: center; justify-content: center; gap: 6px;">
+                    ✕ Remove Cookies
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <details style="border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin-top: 16px; background: rgba(255, 255, 255, 0.01);">
+              <summary style="cursor: pointer; font-size: 13.5px; font-weight: 600; color: var(--text-muted); outline: none; display: flex; align-items: center; gap: 6px; user-select: none;">
+                <span>⚙️ Advanced Developer Settings</span>
+              </summary>
+              <div style="margin-top: 16px; border-top: 1px dashed var(--border); padding-top: 16px; display: flex; flex-direction: column; gap: 20px;">
+                <div class="setting-group" style="margin: 0; border: none; padding: 0;">
+                  <h4 style="font-size: 13px; font-weight: 600; margin-bottom: 6px;">YouTube PO Token</h4>
+                  <p class="setting-description" style="font-size: 11px; margin-bottom: 8px;">Manual override for Proof-of-Origin token. Only needed if the server's automatic POT provider fails.</p>
+                  <div class="setting-row">
+                    <input type="text" id="poTokenInput" class="setting-input" placeholder="Paste your PO Token here...">
+                    <button class="btn-secondary" id="savePoTokenBtn">Save</button>
+                    <button class="btn-secondary danger" id="clearPoTokenBtn" style="display: none;">Clear</button>
+                  </div>
+                  <span class="path-display" id="poTokenStatus" style="margin-top: 6px; font-size: 0.75rem;">No PO Token set</span>
+                </div>
+
+                <div class="setting-group" style="margin: 0; border: none; padding: 0;">
+                  <h4 style="font-size: 13px; font-weight: 600; margin-bottom: 6px;">YouTube Data Sync ID</h4>
+                  <p class="setting-description" style="font-size: 11px; margin-bottom: 8px;">Manual override for account sync ID. Only needed for specific restricted channel downloads.</p>
+                  <div class="setting-row">
+                    <input type="text" id="dataSyncIdInput" class="setting-input" placeholder="Paste your Data Sync ID here...">
+                    <button class="btn-secondary" id="saveDataSyncIdBtn">Save</button>
+                    <button class="btn-secondary danger" id="clearDataSyncIdBtn" style="display: none;">Clear</button>
+                  </div>
+                  <span class="path-display" id="dataSyncIdStatus" style="margin-top: 6px; font-size: 0.75rem;">No Data Sync ID set</span>
+                </div>
+
+                <div class="setting-group" style="margin: 0; border: none; padding: 0;">
+                  <h4 style="font-size: 13px; font-weight: 600; margin-bottom: 6px;">Custom yt-dlp Arguments</h4>
+                  <p class="setting-description" style="font-size: 11px; margin-bottom: 8px;">Custom arguments passed to yt-dlp execution (e.g. <code>--limit-rate 1M</code>).</p>
+                  <div class="setting-row">
+                    <input type="text" id="customYtdlpArgs" class="setting-input" placeholder="e.g. --geo-bypass --limit-rate 1M">
+                    <button class="btn-secondary" id="saveCustomArgsBtn">Save</button>
+                  </div>
+                </div>
+              </div>
+            </details>
+
+            <div class="setting-group" style="margin-top: 24px;">
+              <h4>Maintenance</h4>
+              <div class="setting-row">
+                <span>Update yt-dlp to latest version</span>
+                <button class="btn-secondary" id="updateYtdlpBtn">Update</button>
+              </div>
+            </div>
+
+            <div class="setting-group">
+              <h4>Admin Session</h4>
+              <div class="setting-row" style="background: rgba(248, 113, 113, 0.05); border: 1px dashed rgba(248, 113, 113, 0.2);">
+                <span style="font-size: 13px; color: var(--text-secondary);">You are logged in as administrator.</span>
+                <button class="btn-secondary danger" id="adminLogoutBtn">Lock Panel</button>
+              </div>
+            </div>
           </div>
         </div>
       </section>
