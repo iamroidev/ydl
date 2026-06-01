@@ -1087,8 +1087,17 @@ app.get('/api/settings', (req, res) => {
   res.json(settings);
 });
 
+// Middleware to verify admin authorization
+function requireAdmin(req, res, next) {
+  const authHeader = req.headers.authorization;
+  if (authHeader === 'Bearer admin-authenticated-session-token') {
+    return next();
+  }
+  return res.status(401).json({ success: false, error: 'Unauthorized: Admin access required' });
+}
+
 // Update settings
-app.post('/api/settings', (req, res) => {
+app.post('/api/settings', requireAdmin, (req, res) => {
   const newSettings = req.body;
   Object.assign(settings, newSettings);
   saveSettings();
@@ -1308,7 +1317,7 @@ function convertToNetscape(cookieString) {
 }
 
 // Upload cookies file (or process pasted raw cookie text)
-app.post('/api/upload-cookies', (req, res) => {
+app.post('/api/upload-cookies', requireAdmin, (req, res) => {
   const { content, filename } = req.body;
   try {
     const cookiesDir = path.join(DATA_DIR, 'cookies');

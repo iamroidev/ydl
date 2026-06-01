@@ -36,9 +36,15 @@ async function apiPost(path, data) {
     if (poToken) payload.poToken = poToken;
     if (dataSyncId) payload.dataSyncId = dataSyncId;
 
+    const headers = { 'Content-Type': 'application/json' };
+    const adminToken = localStorage.getItem('admin_session_token');
+    if (adminToken) {
+      headers['Authorization'] = `Bearer ${adminToken}`;
+    }
+
     const response = await fetch(`${API_BASE}${path}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: headers,
       body: JSON.stringify(payload)
     });
     return await response.json();
@@ -1395,7 +1401,10 @@ document.getElementById('cookiesFileInputModal')?.addEventListener('change', asy
     // Upload backup to server
     const response = await fetch(`${API_BASE}/api/upload-cookies`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('admin_session_token')}`
+      },
       body: JSON.stringify({ content: text, filename: file.name })
     });
     const uploadResult = await response.json();
@@ -1469,7 +1478,10 @@ document.getElementById('saveCookiesTextModalBtn')?.addEventListener('click', as
   try {
     const response = await fetch(`${API_BASE}/api/upload-cookies`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('admin_session_token')}`
+      },
       body: JSON.stringify({ content: text, filename: 'pasted_text.txt' })
     });
     
