@@ -818,9 +818,14 @@ app.post('/api/download/start', async (req, res) => {
         } else {
           let error = errorOutput || 'Download failed';
           if (errorOutput.includes('Sign in to confirm')) {
-            error = cookies 
-              ? 'YouTube still requires authentication. Your uploaded cookies may be expired or invalid. Please re-export cookies from YouTube while logged in.'
-              : 'YouTube requires authentication. Please add cookies in Settings.';
+            const serverCookiesActive = settings.cookiesFilePath && fs.existsSync(settings.cookiesFilePath);
+            if (cookies) {
+              error = 'YouTube still requires authentication. Your uploaded cookies may be expired or invalid. Please re-export cookies from YouTube while logged in.';
+            } else if (serverCookiesActive) {
+              error = 'Server authentication session expired. Please contact the administrator to refresh session cookies.';
+            } else {
+              error = 'YouTube requires authentication. Please configure cookies in Settings.';
+            }
           }
           else if (errorOutput.includes('Video unavailable')) error = 'This video is unavailable or private.';
           else if (errorOutput.includes('age-restricted')) error = 'This video is age-restricted. Add cookies to access it.';
@@ -1088,6 +1093,17 @@ app.post('/api/settings', (req, res) => {
   Object.assign(settings, newSettings);
   saveSettings();
   res.json({ success: true });
+});
+
+// Admin login verification
+app.post('/api/admin/login', (req, res) => {
+  const { password } = req.body;
+  const adminPassword = process.env.ADMIN_PASSWORD || 'admin';
+  if (password === adminPassword) {
+    res.json({ success: true, token: 'admin-authenticated-session-token' });
+  } else {
+    res.json({ success: false, error: 'Incorrect password' });
+  }
 });
 
 
