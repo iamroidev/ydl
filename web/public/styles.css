@@ -1934,6 +1934,16 @@ body {
     margin-left: auto; /* Push metadata size value to the far right side */
     font-size: 12px;
   }
+
+  /* Position toasts above the bottom navigation bar on mobile */
+  .toast-container {
+    bottom: 80px;
+    right: 16px;
+    left: 16px;
+  }
+  .toast {
+    max-width: 100%;
+  }
 }
 
 /* Cookies file input styling */
