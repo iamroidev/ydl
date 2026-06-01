@@ -484,161 +484,67 @@
           </div>
 
           <div class="setting-group">
-            <h4>YouTube Authentication</h4>
-            <p class="setting-description">Bypass YouTube bot detection ("Sign in to confirm you're not a bot" errors) using one of the methods below:</p>
+            <h4>YouTube Authentication (Optional)</h4>
+            <p class="setting-description" style="margin-bottom: 12px;">Normal YouTube videos download <strong>100% automatically</strong> with zero setup. You only need to add cookies if you want to download <strong>age-restricted</strong> or <strong>private/member-only</strong> videos.</p>
             
-            <!-- Method 1: YouTube Account OAuth Link (Primary/Recommended) -->
-            <div class="auth-method-card" style="padding: 16px; background: rgba(233, 69, 96, 0.04); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 16px; transition: border-color 0.3s ease;">
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
-                <h5 style="margin: 0; font-size: 14px; font-weight: 600; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
-                  <span>🔗 Method 1: YouTube Account Link</span>
-                  <span style="font-size: 9px; background: var(--accent); color: white; padding: 2px 6px; border-radius: 10px; text-transform: uppercase; font-weight: bold; letter-spacing: 0.5px;">Recommended</span>
-                </h5>
-                <span id="oauthStatusBadge" class="platform-tag" style="background: rgba(248, 113, 113, 0.15); border-color: rgba(248, 113, 113, 0.3); color: var(--error); font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: bold;">Not Linked</span>
-              </div>
-              <p class="setting-description" style="margin-bottom: 14px; font-size: 12.5px; line-height: 1.4; color: var(--text-secondary);">Link your YouTube account directly to the server. No cookies or computer required! Uses Google's standard TV/Device sign-in flow.</p>
-              
-              <div id="oauthUnlinkedSection" style="display: flex; gap: 8px;">
-                <button class="btn-primary" id="startOauthBtn" style="font-size: 12.5px; padding: 8px 16px;">Link YouTube Account</button>
+            <div class="setting-row" style="flex-direction: column; align-items: stretch; gap: 12px; padding: 16px;">
+              <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span id="cookiesStatusDot" style="width: 10px; height: 10px; border-radius: 50%; background: var(--success); display: inline-block;"></span>
+                  <span id="cookiesStatusText" style="font-weight: 600; font-size: 13.5px; color: var(--text-primary);">Automatic Bypasses Active</span>
+                </div>
+                <span class="path-display" id="cookiesPathDisplay" style="font-size: 11.5px; color: var(--text-muted); max-width: 200px; margin: 0;">No custom cookies</span>
               </div>
               
-              <div id="oauthLinkedSection" style="display: none; align-items: center; gap: 12px; flex-wrap: wrap;">
-                <span style="color: var(--success); font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                  Account Linked Successfully!
-                </span>
-                <button class="btn-secondary danger" id="signOutOauthBtn" style="font-size: 11.5px; padding: 6px 12px; margin-left: auto;">Sign Out</button>
-              </div>
-
-              <!-- OAuth Linking Wizard Modal/Overlay -->
-              <div id="oauthWizard" style="display: none; margin-top: 14px; padding: 14px; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 8px;">
-                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
-                  <strong style="font-size: 12.5px; color: var(--accent); font-weight: bold;">Authorization Required</strong>
-                  <button class="btn-icon" id="cancelOauthBtn" style="padding: 2px; color: var(--text-muted); cursor: pointer;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
-                </div>
-                
-                <div style="font-size: 12px; line-height: 1.5; color: var(--text-secondary); display: flex; flex-direction: column; gap: 12px;">
-                  <div>
-                    <span style="background: var(--accent); color: white; border-radius: 50%; width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold; margin-right: 6px;">1</span>
-                    Open Google sign-in page: <a id="oauthLink" href="https://www.google.com/device" target="_blank" style="color: var(--accent); text-decoration: underline; font-weight: 600;">google.com/device</a>
-                  </div>
-                  <div>
-                    <span style="background: var(--accent); color: white; border-radius: 50%; width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold; margin-right: 6px;">2</span>
-                    Enter this code on your device:
-                    <div style="margin-top: 8px; display: flex; gap: 8px; align-items: center;">
-                      <span id="oauthCodeDisplay" style="font-size: 18px; font-weight: 800; letter-spacing: 2px; color: var(--text-primary); background: var(--bg-secondary); padding: 6px 14px; border-radius: 6px; border: 1px solid var(--border); font-family: monospace;">XXXX-XXXX</span>
-                      <button class="btn-small secondary" id="copyOauthCodeBtn" style="padding: 8px 12px; font-size: 11px;">Copy Code</button>
-                    </div>
-                  </div>
-                  <div style="display: flex; align-items: center; gap: 8px; margin-top: 6px; color: var(--text-muted); font-size: 11.5px;">
-                    <div class="spinner-small" style="margin: 0; width: 12px; height: 12px; border-width: 1.5px;"></div>
-                    <span>Waiting for your approval on Google...</span>
-                  </div>
-                </div>
+              <div style="display: flex; gap: 10px; width: 100%; margin-top: 4px;">
+                <button class="btn-secondary" id="configureCookiesBtn" style="flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                  Configure Cookies...
+                </button>
+                <button class="btn-secondary danger" id="clearCookiesBtn" style="display: none; flex: 1; align-items: center; justify-content: center; gap: 6px;">
+                  ✕ Remove Cookies
+                </button>
               </div>
             </div>
+          </div>
 
-            <!-- Method 2: Manual Cookie Upload/Paste (Legacy/Fallback) -->
-            <details style="border: 1px solid var(--border); border-radius: 12px; padding: 12px; background: var(--bg-secondary); transition: border-color 0.3s ease;">
-              <summary style="cursor: pointer; font-size: 13px; font-weight: 600; color: var(--text-secondary); outline: none; display: flex; align-items: center; gap: 6px; user-select: none;">
-                <span>🔑 Method 2: Import Cookies (Legacy / Member-only Videos)</span>
-              </summary>
-              <div style="margin-top: 12px; border-top: 1px dashed var(--border); padding-top: 12px;">
-                <div class="setting-row" style="margin-bottom: 12px;">
-                  <span class="path-display" id="cookiesPathDisplay">No cookies file selected</span>
-                  <div class="btn-group">
-                    <input type="file" id="cookiesFileInput" accept=".txt,.cookies,.json" style="display:none">
-                    <button class="btn-secondary" id="selectCookiesBtn">Upload File</button>
-                    <button class="btn-secondary danger" id="clearCookiesBtn" style="display: none;">Clear</button>
-                  </div>
+          <details style="border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin-top: 16px; background: rgba(255, 255, 255, 0.01);">
+            <summary style="cursor: pointer; font-size: 13.5px; font-weight: 600; color: var(--text-muted); outline: none; display: flex; align-items: center; gap: 6px; user-select: none;">
+              <span>⚙️ Advanced Developer Settings</span>
+            </summary>
+            <div style="margin-top: 16px; border-top: 1px dashed var(--border); padding-top: 16px; display: flex; flex-direction: column; gap: 20px;">
+              <div class="setting-group" style="margin: 0; border: none; padding: 0;">
+                <h4 style="font-size: 13px; font-weight: 600; margin-bottom: 6px;">YouTube PO Token</h4>
+                <p class="setting-description" style="font-size: 11px; margin-bottom: 8px;">Manual override for Proof-of-Origin token. Only needed if the server's automatic POT provider fails.</p>
+                <div class="setting-row">
+                  <input type="text" id="poTokenInput" class="setting-input" placeholder="Paste your PO Token here...">
+                  <button class="btn-secondary" id="savePoTokenBtn">Save</button>
+                  <button class="btn-secondary danger" id="clearPoTokenBtn" style="display: none;">Clear</button>
                 </div>
+                <span class="path-display" id="poTokenStatus" style="margin-top: 6px; font-size: 0.75rem;">No PO Token set</span>
+              </div>
 
-                <div class="setting-row" style="flex-direction: column; align-items: stretch; gap: 8px;">
-                  <span class="setting-description" style="margin-bottom: 0; color: var(--text-secondary);">Or paste Netscape Cookie text (or raw HTTP header Cookie string) directly:</span>
-                  <textarea id="cookiesTextInput" class="setting-input" style="height: 100px; resize: vertical; margin-right: 0; font-family: monospace; font-size: 11px;" placeholder="# Netscape HTTP Cookie File...&#10;Or: GPS=1; YSC=abc; ..."></textarea>
-                  <button class="btn-secondary" id="saveCookiesTextBtn">Save Cookies Text</button>
-                  
-                  <details style="margin-top: 8px; font-size: 11.5px; color: var(--text-muted); width: 100%; border: 1px dashed var(--accent); border-radius: 10px; padding: 6px 10px;">
-                    <summary style="cursor: pointer; color: var(--accent); font-weight: 600; outline: none; display: flex; align-items: center; gap: 6px;">
-                      <span>📱 No PC? Tap here for iOS / Android Quick Guide</span>
-                    </summary>
-                    <div style="margin-top: 8px; padding: 12px; background: var(--bg-primary); border-radius: 8px; border: 1px solid var(--border); line-height: 1.5; text-align: left; display: flex; flex-direction: column; gap: 10px;">
-                      <div>
-                        <span style="background: var(--accent); color: white; border-radius: 50%; width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold; margin-right: 6px;">1</span>
-                        <strong>Copy the magical script:</strong>
-                        <div style="margin: 6px 0; display: flex; gap: 8px; align-items: center;">
-                          <button type="button" class="btn-small" id="copyBookmarkletCodeBtn" style="flex-shrink: 0; background: var(--bg-tertiary); border: 1px solid var(--border); color: var(--text-primary); font-size: 11px; padding: 6px 12px; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px; cursor: pointer;">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--accent);"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-                            Copy Script Code
-                          </button>
-                          <span id="scriptCopiedBadge" style="display: none; font-size: 10px; color: var(--success); font-weight: bold;">Copied!</span>
-                        </div>
-                      </div>
+              <div class="setting-group" style="margin: 0; border: none; padding: 0;">
+                <h4 style="font-size: 13px; font-weight: 600; margin-bottom: 6px;">YouTube Data Sync ID</h4>
+                <p class="setting-description" style="font-size: 11px; margin-bottom: 8px;">Manual override for account sync ID. Only needed for specific restricted channel downloads.</p>
+                <div class="setting-row">
+                  <input type="text" id="dataSyncIdInput" class="setting-input" placeholder="Paste your Data Sync ID here...">
+                  <button class="btn-secondary" id="saveDataSyncIdBtn">Save</button>
+                  <button class="btn-secondary danger" id="clearDataSyncIdBtn" style="display: none;">Clear</button>
+                </div>
+                <span class="path-display" id="dataSyncIdStatus" style="margin-top: 6px; font-size: 0.75rem;">No Data Sync ID set</span>
+              </div>
 
-                      <div>
-                        <span style="background: var(--accent); color: white; border-radius: 50%; width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold; margin-right: 6px;">2</span>
-                        <strong>Create a Bookmark on your phone:</strong>
-                        <ul style="margin: 4px 0 0 24px; padding: 0; list-style-type: disc;">
-                          <li>Bookmark <i>any</i> page (like google.com) in Safari or Chrome mobile.</li>
-                          <li>Edit that bookmark: Name it <code>Copy YouTube Cookies</code>.</li>
-                          <li>Delete the URL address, and paste the copied code there instead. Save it!</li>
-                        </ul>
-                      </div>
-
-                      <div>
-                        <span style="background: var(--accent); color: white; border-radius: 50%; width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold; margin-right: 6px;">3</span>
-                        <strong>Run the script on YouTube:</strong>
-                        <ul style="margin: 4px 0 0 24px; padding: 0; list-style-type: disc;">
-                          <li>Go to <a href="https://m.youtube.com" target="_blank" style="color: var(--accent); text-decoration: underline; font-weight: 500;">m.youtube.com</a> and log in.</li>
-                          <li>Tap the browser's address bar at the top, type <code>Copy YouTube Cookies</code>, and tap the bookmark that appears.</li>
-                          <li>A popup will say "YouTube cookies copied!".</li>
-                        </ul>
-                      </div>
-
-                      <div>
-                        <span style="background: var(--accent); color: white; border-radius: 50%; width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold; margin-right: 6px;">4</span>
-                        <strong>Paste here:</strong>
-                        <ul style="margin: 4px 0 0 24px; padding: 0; list-style-type: disc;">
-                          <li>Come back here, paste the copied text into the textarea above, and click <strong>Save Cookies Text</strong>.</li>
-                        </ul>
-                      </div>
-                    </div>
-                  </details>
+              <div class="setting-group" style="margin: 0; border: none; padding: 0;">
+                <h4 style="font-size: 13px; font-weight: 600; margin-bottom: 6px;">Custom yt-dlp Arguments</h4>
+                <p class="setting-description" style="font-size: 11px; margin-bottom: 8px;">Custom arguments passed to yt-dlp execution (e.g. <code>--limit-rate 1M</code>).</p>
+                <div class="setting-row">
+                  <input type="text" id="customYtdlpArgs" class="setting-input" placeholder="e.g. --geo-bypass --limit-rate 1M">
+                  <button class="btn-secondary" id="saveCustomArgsBtn">Save</button>
                 </div>
               </div>
-            </details>
-          </div>
-
-          <div class="setting-group">
-            <h4>YouTube PO Token</h4>
-            <p class="setting-description">Required when hosting on cloud servers. Get your PO Token from <a href="https://github.com/yt-dlp/yt-dlp/wiki/Extractors#po-token-guide" target="_blank" style="color: var(--accent-primary); text-decoration: underline;">the yt-dlp wiki</a>. You can use tools like <code>yt-dlp --extractor-args "youtube:player-client=web" --print-po-token URL</code> or the browser-based token generator.</p>
-            <div class="setting-row">
-              <input type="text" id="poTokenInput" class="setting-input" placeholder="Paste your PO Token here...">
-              <button class="btn-secondary" id="savePoTokenBtn">Save</button>
-              <button class="btn-secondary danger" id="clearPoTokenBtn" style="display: none;">Clear</button>
             </div>
-            <span class="path-display" id="poTokenStatus" style="margin-top: 6px; font-size: 0.8rem;">No PO Token set</span>
-          </div>
-
-          <div class="setting-group">
-            <h4>YouTube Data Sync ID</h4>
-            <p class="setting-description">If you see "Missing required Data Sync ID" errors, paste your Data Sync ID here. Get it from your YouTube account's network requests.</p>
-            <div class="setting-row">
-              <input type="text" id="dataSyncIdInput" class="setting-input" placeholder="Paste your Data Sync ID here...">
-              <button class="btn-secondary" id="saveDataSyncIdBtn">Save</button>
-              <button class="btn-secondary danger" id="clearDataSyncIdBtn" style="display: none;">Clear</button>
-            </div>
-            <span class="path-display" id="dataSyncIdStatus" style="margin-top: 6px; font-size: 0.8rem;">No Data Sync ID set</span>
-          </div>
-
-          <div class="setting-group">
-            <h4>Advanced</h4>
-            <p class="setting-description">Custom yt-dlp arguments (for advanced users)</p>
-            <div class="setting-row">
-              <input type="text" id="customYtdlpArgs" class="setting-input" placeholder="e.g. --geo-bypass --limit-rate 1M">
-              <button class="btn-secondary" id="saveCustomArgsBtn">Save</button>
-            </div>
-          </div>
+          </details>
 
           <div class="setting-group">
             <h4>Maintenance</h4>
@@ -695,6 +601,95 @@
               </svg>
             </div>
             <audio id="previewAudio" controls style="width: 100%; margin-top: 20px;"></audio>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- YouTube Cookies Configuration Modal -->
+  <div class="modal" id="cookiesSetupModal" style="display: none;">
+    <div class="modal-content" style="max-width: 480px;">
+      <div class="modal-header">
+        <h3>YouTube Cookies Configuration</h3>
+        <button class="btn-clear" id="closeCookiesSetupModalBtn">✕</button>
+      </div>
+      <div class="modal-body" style="padding: 16px;">
+        <p style="font-size: 12.5px; line-height: 1.4; color: var(--text-muted); margin-bottom: 16px;">
+          Cookies are <strong>only</strong> needed for age-restricted or private/member-only videos. Normal videos download automatically with no configuration.
+        </p>
+
+        <!-- Tab switcher -->
+        <div class="theme-switcher" style="display: flex; gap: 4px; background: var(--bg-primary); padding: 4px; border-radius: 10px; border: 1px solid var(--border); margin-bottom: 16px;">
+          <button class="theme-btn active" id="tabUploadBtn" style="padding: 8px; font-size: 12px;">📁 Upload File</button>
+          <button class="theme-btn" id="tabPasteBtn" style="padding: 8px; font-size: 12px;">✍️ Paste Text</button>
+          <button class="theme-btn" id="tabMobileBtn" style="padding: 8px; font-size: 12px;">📱 Mobile Guide</button>
+        </div>
+
+        <!-- Tab content 1: Upload File -->
+        <div id="cookiesUploadSection" style="display: block;">
+          <div id="cookiesDropZone" style="border: 2px dashed var(--border); border-radius: 12px; padding: 24px 16px; text-align: center; background: rgba(255,255,255,0.01); display: flex; flex-direction: column; align-items: center; gap: 12px; transition: border-color 0.2s;">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color: var(--accent);">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
+            </svg>
+            <div>
+              <span style="font-size: 13.5px; font-weight: 600; display: block; margin-bottom: 4px;">Select cookies file</span>
+              <span style="font-size: 11.5px; color: var(--text-muted);">Supports .txt exported from browser extensions</span>
+            </div>
+            <input type="file" id="cookiesFileInputModal" accept=".txt,.cookies,.json" style="display:none">
+            <button class="btn-secondary" id="selectCookiesFileModalBtn" style="margin-top: 4px;">Choose File</button>
+          </div>
+          <div style="margin-top: 14px; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 10px; padding: 12px; font-size: 11.5px; line-height: 1.4; color: var(--text-muted);">
+            <strong>How to export from PC:</strong> Install a browser extension like <i>Get cookies.txt LOCALLY</i> (Chrome/Edge) or <i>cookies.txt</i> (Firefox). Log in to YouTube, click the extension icon, export the cookies, and upload that file here.
+          </div>
+        </div>
+
+        <!-- Tab content 2: Paste Text -->
+        <div id="cookiesPasteSection" style="display: none; flex-direction: column; gap: 10px;">
+          <span style="font-size: 11.5px; color: var(--text-secondary);">Paste Netscape cookie text or raw HTTP cookie header value:</span>
+          <textarea id="cookiesTextInputModal" style="height: 150px; font-family: monospace; font-size: 10.5px; padding: 10px; resize: vertical; margin-bottom: 4px;" placeholder="# Netscape HTTP Cookie File&#10;.youtube.com&#9;TRUE&#9;/&#9;TRUE&#9;1735689600&#9;LOGIN_INFO&#9;...&#10;&#10;Or raw string:&#10;GPS=1; YSC=abc; ..."></textarea>
+          <button class="btn-primary" id="saveCookiesTextModalBtn" style="width: 100%; padding: 10px;">Save Cookie Text</button>
+        </div>
+
+        <!-- Tab content 3: Mobile Guide -->
+        <div id="cookiesMobileSection" style="display: none; flex-direction: column; gap: 12px;">
+          <div style="background: rgba(233, 69, 96, 0.05); border: 1px solid rgba(233, 69, 96, 0.15); border-radius: 10px; padding: 10px 12px; font-size: 11.5px; line-height: 1.4; color: var(--accent); font-weight: 500; display: flex; align-items: flex-start; gap: 8px;">
+            <span style="font-size: 14px; line-height: 1;">💡</span>
+            <span><strong>Easiest No-PC Method</strong>: Use <strong>Orion Browser</strong> (iOS) or <strong>Kiwi Browser</strong> (Android) on your phone. They support standard Chrome extensions, allowing you to install the cookie exporter extension and download the file directly on your mobile device!</span>
+          </div>
+
+          <div style="font-size: 11.5px; line-height: 1.45; color: var(--text-secondary); display: flex; flex-direction: column; gap: 10px; background: var(--bg-primary); border-radius: 10px; padding: 12px; border: 1px solid var(--border);">
+            <div style="display: flex; gap: 8px;">
+              <span style="background: var(--accent); color: white; border-radius: 50%; width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold; flex-shrink: 0;">1</span>
+              <div>
+                <strong>Copy the bookmarklet script:</strong>
+                <div style="margin: 6px 0; display: flex; gap: 8px; align-items: center;">
+                  <button type="button" class="btn-small" id="copyBookmarkletCodeBtn" style="background: var(--bg-tertiary); border: 1px solid var(--border); color: var(--text-primary); font-size: 11px; padding: 6px 12px; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px; cursor: pointer;">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--accent);"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                    Copy Script Code
+                  </button>
+                  <span id="scriptCopiedBadge" style="display: none; font-size: 10px; color: var(--success); font-weight: bold;">Copied!</span>
+                </div>
+              </div>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <span style="background: var(--accent); color: white; border-radius: 50%; width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold; flex-shrink: 0;">2</span>
+              <div>
+                <strong>Create a bookmark:</strong> Bookmark any page on your phone, edit it, rename it to "Get YouTube Cookies", delete the URL address, and paste the code you copied.
+              </div>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <span style="background: var(--accent); color: white; border-radius: 50%; width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold; flex-shrink: 0;">3</span>
+              <div>
+                <strong>Run it on YouTube:</strong> Open <a href="https://m.youtube.com" target="_blank" style="color: var(--accent); font-weight: 600;">m.youtube.com</a>, log in, tap your browser's address bar, type "Get YouTube Cookies", and tap the bookmark to copy the cookies automatically.
+              </div>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <span style="background: var(--accent); color: white; border-radius: 50%; width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold; flex-shrink: 0;">4</span>
+              <div>
+                <strong>Paste and save:</strong> Go back to the <strong>Paste Text</strong> tab in this dialog, paste the clipboard content, and click Save.
+              </div>
+            </div>
           </div>
         </div>
       </div>

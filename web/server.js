@@ -48,15 +48,6 @@ const activeDownloads = new Map();
 const downloadsMap = new Map();
 let ytdlpPath = null;
 
-// YouTube OAuth2 state
-let currentOauthProcess = null;
-let oauthStatus = {
-  status: 'unauthenticated', // 'unauthenticated', 'authenticating', 'waiting_for_user', 'authenticated', 'failed'
-  url: null,
-  code: null,
-  error: null
-};
-
 // Clean up downloadsMap memory (keep at most 50 completed/errored downloads)
 function cleanUpDownloadsMap() {
   try {
@@ -249,41 +240,6 @@ ensureYtdlp().catch(err => {
   console.error('Failed to setup yt-dlp:', err);
 });
 
-// Helper to recursively check for token_data in the cache directory
-function checkOauthAuthenticated() {
-  const cacheDir = path.join(DATA_DIR, 'cache');
-  const pathsToCheck = [
-    path.join(cacheDir, 'youtube-oauth2.token_data'),
-    path.join(cacheDir, 'youtube', 'youtube-oauth2.token_data'),
-    path.join(cacheDir, 'youtube-oauth.token_data')
-  ];
-  
-  for (const p of pathsToCheck) {
-    if (fs.existsSync(p)) return true;
-  }
-  
-  try {
-    if (fs.existsSync(cacheDir)) {
-      const findTokenFile = (dir) => {
-        const files = fs.readdirSync(dir);
-        for (const file of files) {
-          const fullPath = path.join(dir, file);
-          if (fs.statSync(fullPath).isDirectory()) {
-            const found = findTokenFile(fullPath);
-            if (found) return true;
-          } else if (file.includes('token_data') || file.includes('youtube-oauth')) {
-            return true;
-          }
-        }
-        return false;
-      };
-      return findTokenFile(cacheDir);
-    }
-  } catch (e) {}
-  
-  return false;
-}
-
 // Build common yt-dlp arguments with cookies, PO Token, Data Sync ID, and custom args
 function buildYtdlpArgs(baseArgs = [], sourceUrl = '', requestCookiesPath = '', requestCustomArgs = '', requestPoToken = '', requestDataSyncId = '') {
   let args = [...baseArgs];
@@ -293,28 +249,17 @@ function buildYtdlpArgs(baseArgs = [], sourceUrl = '', requestCookiesPath = '', 
   const cacheDir = path.join(DATA_DIR, 'cache');
   args.push('--cache-dir', cacheDir);
   
-  const isOauthLinked = checkOauthAuthenticated();
-  
   // Add cookies file if configured.
-  // CRITICAL: Avoid using --cookies simultaneously with OAuth for YouTube sources to prevent authentication conflicts.
-  if (!isYouTubeSource || !isOauthLinked) {
-    if (requestCookiesPath) {
-      args.push('--cookies', requestCookiesPath);
-    } else if (settings.cookiesFilePath && fs.existsSync(settings.cookiesFilePath)) {
-      args.push('--cookies', settings.cookiesFilePath);
-    }
+  if (requestCookiesPath) {
+    args.push('--cookies', requestCookiesPath);
+  } else if (settings.cookiesFilePath && fs.existsSync(settings.cookiesFilePath)) {
+    args.push('--cookies', settings.cookiesFilePath);
   }
   
   // Build extractor args for YouTube
   if (isYouTubeSource) {
     // Explicitly configure JS runtimes for EJS solver (Deno is preferred/automatic, Node is fallback)
     args.push('--js-runtimes', 'deno,node');
-
-    // Use OAuth if authenticated
-    if (isOauthLinked) {
-      args.push('--username', 'oauth2');
-      args.push('--password', '');
-    }
 
     const extractorParts = [];
     
@@ -330,8 +275,8 @@ function buildYtdlpArgs(baseArgs = [], sourceUrl = '', requestCookiesPath = '', 
       extractorParts.push(`data_sync_id=${dataSyncId}`);
     }
     
-    // Set player client - use 'web' when we have PO token or OAuth, otherwise try multiple clients
-    if (poToken || isOauthLinked) {
+    // Set player client - use 'web' when we have PO token, otherwise try multiple clients
+    if (poToken) {
       extractorParts.push('player_client=web');
     } else if (!requestCookiesPath && !(settings.cookiesFilePath && fs.existsSync(settings.cookiesFilePath))) {
       // No cookies and no PO token - try multiple clients as fallback
@@ -1145,152 +1090,7 @@ app.post('/api/settings', (req, res) => {
   res.json({ success: true });
 });
 
-// Get YouTube OAuth Status
-app.get('/api/youtube-oauth/status', (req, res) => {
-  const isAuth = checkOauthAuthenticated();
-  if (isAuth && oauthStatus.status !== 'authenticating' && oauthStatus.status !== 'waiting_for_user') {
-    oauthStatus.status = 'authenticated';
-    oauthStatus.url = null;
-    oauthStatus.code = null;
-    oauthStatus.error = null;
-  } else if (!isAuth && oauthStatus.status === 'authenticated') {
-    oauthStatus.status = 'unauthenticated';
-  }
-  res.json(oauthStatus);
-});
 
-// Start YouTube OAuth Device Flow
-app.post('/api/youtube-oauth/start', async (req, res) => {
-  try {
-    if (currentOauthProcess) {
-      try { currentOauthProcess.kill(); } catch (e) {}
-      currentOauthProcess = null;
-    }
-    
-    oauthStatus = {
-      status: 'authenticating',
-      url: null,
-      code: null,
-      error: null
-    };
-    
-    if (!ytdlpPath) await ensureYtdlp();
-    
-    const cacheDir = path.join(DATA_DIR, 'cache');
-    const args = [
-      '--username', 'oauth2',
-      '--password', '',
-      '--simulate',
-      '--cache-dir', cacheDir,
-      'https://www.youtube.com/watch?v=BaW_jenozKc'
-    ];
-    
-    console.log('Starting YouTube OAuth authentication: ', ytdlpPath, args.join(' '));
-    
-    currentOauthProcess = spawn(ytdlpPath, args, { env: getYtdlpEnv() });
-    let outputData = '';
-    
-    const parseOutput = (data) => {
-      const chunk = data.toString();
-      outputData += chunk;
-      console.log('[yt-dlp OAuth]:', chunk.trim());
-      
-      const match = outputData.match(/go to\s+(https?:\/\/[^\s]+)\s+and enter code\s+([A-Z0-9-]+)/i);
-      if (match) {
-        oauthStatus.url = match[1].trim();
-        oauthStatus.code = match[2].trim();
-        oauthStatus.status = 'waiting_for_user';
-      }
-    };
-    
-    currentOauthProcess.stdout.on('data', parseOutput);
-    currentOauthProcess.stderr.on('data', parseOutput);
-    
-    currentOauthProcess.on('close', (code) => {
-      console.log(`YouTube OAuth process completed with exit code: ${code}`);
-      currentOauthProcess = null;
-      
-      if (code === 0) {
-        oauthStatus.status = 'authenticated';
-        oauthStatus.url = null;
-        oauthStatus.code = null;
-        oauthStatus.error = null;
-      } else {
-        if (oauthStatus.status !== 'authenticated') {
-          oauthStatus.status = 'failed';
-          oauthStatus.error = `Authentication aborted or timed out (Code ${code}).`;
-        }
-      }
-    });
-    
-    let waitIntervals = 0;
-    const checkInterval = setInterval(() => {
-      waitIntervals++;
-      if (oauthStatus.status === 'waiting_for_user' || oauthStatus.status === 'failed' || waitIntervals >= 15) {
-        clearInterval(checkInterval);
-        res.json(oauthStatus);
-      }
-    }, 200);
-    
-  } catch (err) {
-    oauthStatus.status = 'failed';
-    oauthStatus.error = err.message;
-    res.json(oauthStatus);
-  }
-});
-
-// Cancel YouTube OAuth Process
-app.post('/api/youtube-oauth/cancel', (req, res) => {
-  if (currentOauthProcess) {
-    try { currentOauthProcess.kill(); } catch (e) {}
-    currentOauthProcess = null;
-  }
-  oauthStatus = {
-    status: 'unauthenticated',
-    url: null,
-    code: null,
-    error: null
-  };
-  res.json({ success: true });
-});
-
-// Sign Out of YouTube OAuth (clear tokens)
-app.post('/api/youtube-oauth/signout', async (req, res) => {
-  try {
-    if (currentOauthProcess) {
-      try { currentOauthProcess.kill(); } catch (e) {}
-      currentOauthProcess = null;
-    }
-    
-    if (!ytdlpPath) await ensureYtdlp();
-    
-    const cacheDir = path.join(DATA_DIR, 'cache');
-    try {
-      execSync(`"${ytdlpPath}" --rm-cache-dir`, { env: getYtdlpEnv(), stdio: 'pipe' });
-    } catch (e) {}
-    
-    const pathsToDelete = [
-      path.join(cacheDir, 'youtube-oauth2.token_data'),
-      path.join(cacheDir, 'youtube', 'youtube-oauth2.token_data'),
-      path.join(cacheDir, 'youtube-oauth.token_data')
-    ];
-    for (const p of pathsToDelete) {
-      if (fs.existsSync(p)) {
-        try { fs.unlinkSync(p); } catch (err) {}
-      }
-    }
-    
-    oauthStatus = {
-      status: 'unauthenticated',
-      url: null,
-      code: null,
-      error: null
-    };
-    res.json({ success: true });
-  } catch (err) {
-    res.json({ success: false, error: err.message });
-  }
-});
 
 // Parse URLs (batch import)
 app.post('/api/parse-urls', (req, res) => {
