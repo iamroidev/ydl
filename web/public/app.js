@@ -1253,23 +1253,17 @@ async function loadSettings() {
     
     document.getElementById('downloadPathDisplay').textContent = settings.downloadPath || 'web/downloads';
     
-    const cookiesDisplay = document.getElementById('cookiesPathDisplay');
-    const clearCookiesBtn = document.getElementById('clearCookiesBtn');
-    
     // Check localStorage first
     const localCookies = localStorage.getItem('youtube_cookies');
     const localCookiesName = localStorage.getItem('youtube_cookies_name') || 'cookies.txt';
     if (localCookies) {
-      cookiesDisplay.textContent = `Local: ${localCookiesName} (Saved in Browser)`;
-      clearCookiesBtn.style.display = 'inline-flex';
-      const cookiesTextInput = document.getElementById('cookiesTextInput');
-      if (cookiesTextInput) cookiesTextInput.value = localCookies;
+      updateCookiesStatusUI(true, `Local: ${localCookiesName}`);
+      const cookiesTextInputModal = document.getElementById('cookiesTextInputModal');
+      if (cookiesTextInputModal) cookiesTextInputModal.value = localCookies;
     } else if (settings.cookiesFilePath) {
-      cookiesDisplay.textContent = settings.cookiesFilePath;
-      clearCookiesBtn.style.display = 'inline-flex';
+      updateCookiesStatusUI(true, settings.cookiesFilePath);
     } else {
-      cookiesDisplay.textContent = 'No cookies file selected';
-      clearCookiesBtn.style.display = 'none';
+      updateCookiesStatusUI(false);
     }
     
     // Load PO Token
@@ -1319,20 +1313,72 @@ document.getElementById('openFolderBtn')?.addEventListener('click', () => {
   showToast('Downloads are stored on the server', 'info');
 });
 
-// Cookies file selection via file input
-document.getElementById('selectCookiesBtn')?.addEventListener('click', () => {
-  document.getElementById('cookiesFileInput').click();
+// Update YouTube Cookies UI Elements
+function updateCookiesStatusUI(hasCookies, cookiesName) {
+  const statusDot = document.getElementById('cookiesStatusDot');
+  const statusText = document.getElementById('cookiesStatusText');
+  const pathDisplay = document.getElementById('cookiesPathDisplay');
+  const clearBtn = document.getElementById('clearCookiesBtn');
+  
+  if (hasCookies) {
+    if (statusDot) statusDot.style.background = '#3b82f6'; // Active/Blue
+    if (statusText) statusText.textContent = 'Custom Cookies Loaded';
+    if (pathDisplay) pathDisplay.textContent = cookiesName || 'cookies.txt';
+    if (clearBtn) clearBtn.style.display = 'inline-flex';
+  } else {
+    if (statusDot) statusDot.style.background = '#10b981'; // Ready/Green
+    if (statusText) statusText.textContent = 'Automatic Bypasses Active';
+    if (pathDisplay) pathDisplay.textContent = 'No custom cookies';
+    if (clearBtn) clearBtn.style.display = 'none';
+  }
+}
+
+// Cookies modal open/close controls
+const cookiesSetupModal = document.getElementById('cookiesSetupModal');
+document.getElementById('configureCookiesBtn')?.addEventListener('click', () => {
+  if (cookiesSetupModal) cookiesSetupModal.style.display = 'flex';
 });
 
-document.getElementById('cookiesFileInput')?.addEventListener('change', async (e) => {
+document.getElementById('closeCookiesSetupModalBtn')?.addEventListener('click', () => {
+  if (cookiesSetupModal) cookiesSetupModal.style.display = 'none';
+});
+
+// Modal tabs switching logic
+const tabUploadBtn = document.getElementById('tabUploadBtn');
+const tabPasteBtn = document.getElementById('tabPasteBtn');
+const tabMobileBtn = document.getElementById('tabMobileBtn');
+
+const cookiesUploadSection = document.getElementById('cookiesUploadSection');
+const cookiesPasteSection = document.getElementById('cookiesPasteSection');
+const cookiesMobileSection = document.getElementById('cookiesMobileSection');
+
+function switchCookiesTab(activeTab, sectionToShow) {
+  [tabUploadBtn, tabPasteBtn, tabMobileBtn].forEach(tab => tab?.classList.remove('active'));
+  [cookiesUploadSection, cookiesPasteSection, cookiesMobileSection].forEach(sec => {
+    if (sec) sec.style.display = 'none';
+  });
+  
+  activeTab?.classList.add('active');
+  if (sectionToShow) {
+    sectionToShow.style.display = sectionToShow === cookiesPasteSection ? 'flex' : 'block';
+  }
+}
+
+tabUploadBtn?.addEventListener('click', () => switchCookiesTab(tabUploadBtn, cookiesUploadSection));
+tabPasteBtn?.addEventListener('click', () => switchCookiesTab(tabPasteBtn, cookiesPasteSection));
+tabMobileBtn?.addEventListener('click', () => switchCookiesTab(tabMobileBtn, cookiesMobileSection));
+
+// Select and upload file inside modal
+document.getElementById('selectCookiesFileModalBtn')?.addEventListener('click', () => {
+  document.getElementById('cookiesFileInputModal').click();
+});
+
+document.getElementById('cookiesFileInputModal')?.addEventListener('change', async (e) => {
   const file = e.target.files[0];
   if (!file) return;
   
   try {
-    // Read file and send as text
     const text = await file.text();
-    
-    // Simple format check
     const trimmed = text.trim();
     if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
       showToast('Error: Cookies file must be in Netscape (txt) format, not JSON!', 'error');
@@ -1346,17 +1392,16 @@ document.getElementById('cookiesFileInput')?.addEventListener('change', async (e
     localStorage.setItem('youtube_cookies', text);
     localStorage.setItem('youtube_cookies_name', file.name);
     
-    // Upload the file content to server (backup)
+    // Upload backup to server
     const response = await fetch(`${API_BASE}/api/upload-cookies`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ content: text, filename: file.name })
     });
-    
     const uploadResult = await response.json();
     
-    document.getElementById('cookiesPathDisplay').textContent = `Local: ${file.name} (Saved in Browser)`;
-    document.getElementById('clearCookiesBtn').style.display = 'inline-flex';
+    updateCookiesStatusUI(true, `Local: ${file.name}`);
+    if (cookiesSetupModal) cookiesSetupModal.style.display = 'none';
     
     if (uploadResult.success) {
       showToast('Cookies saved in browser and server!', 'success');
@@ -1368,20 +1413,22 @@ document.getElementById('cookiesFileInput')?.addEventListener('change', async (e
   }
 });
 
+// Clear cookies functionality
 document.getElementById('clearCookiesBtn')?.addEventListener('click', async () => {
   localStorage.removeItem('youtube_cookies');
   localStorage.removeItem('youtube_cookies_name');
   try {
     await apiPost('/api/settings', { cookiesFilePath: '' });
   } catch (e) {}
-  document.getElementById('cookiesPathDisplay').textContent = 'No cookies file selected';
-  document.getElementById('clearCookiesBtn').style.display = 'none';
-  const cookiesTextInput = document.getElementById('cookiesTextInput');
-  if (cookiesTextInput) cookiesTextInput.value = '';
+  
+  updateCookiesStatusUI(false);
+  
+  const cookiesTextInputModal = document.getElementById('cookiesTextInputModal');
+  if (cookiesTextInputModal) cookiesTextInputModal.value = '';
   showToast('Cookies file cleared', 'info');
 });
 
-// Copy bookmarklet code to clipboard
+// Copy bookmarklet code to clipboard inside modal
 document.getElementById('copyBookmarkletCodeBtn')?.addEventListener('click', () => {
   const code = 'javascript:(function(){const c=document.cookie;if(!c){alert("No cookies found. Login to YouTube first!");return;}const el=document.createElement("textarea");el.value=c;document.body.appendChild(el);el.select();document.execCommand("copy");document.body.removeChild(el);alert("YouTube cookies copied!");})()';
   navigator.clipboard.writeText(code).then(() => {
@@ -1403,15 +1450,14 @@ document.getElementById('copyBookmarkletCodeBtn')?.addEventListener('click', () 
   });
 });
 
-// Save cookies pasted directly as text
-document.getElementById('saveCookiesTextBtn')?.addEventListener('click', async () => {
-  const text = document.getElementById('cookiesTextInput').value.trim();
+// Save cookies pasted directly as text inside modal
+document.getElementById('saveCookiesTextModalBtn')?.addEventListener('click', async () => {
+  const text = document.getElementById('cookiesTextInputModal').value.trim();
   if (!text) {
     showToast('Please paste cookies first!', 'warning');
     return;
   }
   
-  // Simple format check
   if (text.startsWith('{') || text.startsWith('[')) {
     showToast('Error: Cookies must be in Netscape (txt) format, not JSON!', 'error');
     return;
@@ -1428,8 +1474,8 @@ document.getElementById('saveCookiesTextBtn')?.addEventListener('click', async (
     });
     
     const uploadResult = await response.json();
-    document.getElementById('cookiesPathDisplay').textContent = `Local: pasted_text.txt (Pasted in Browser)`;
-    document.getElementById('clearCookiesBtn').style.display = 'inline-flex';
+    updateCookiesStatusUI(true, 'Local: pasted_text.txt');
+    if (cookiesSetupModal) cookiesSetupModal.style.display = 'none';
     
     if (uploadResult.success) {
       showToast('Cookies saved in browser and server!', 'success');
