@@ -472,8 +472,13 @@ app.post('/api/video-info', async (req, res) => {
         thumbnail: `https://i.ytimg.com/vi/${parts[0]}/maxresdefault.jpg`
       });
     } else {
+      const serverCookiesActive = settings.cookiesFilePath && fs.existsSync(settings.cookiesFilePath);
       const error = result.error?.includes('Sign in to confirm')
-        ? (cookies ? 'YouTube still requires authentication. Your uploaded cookies file may be expired or invalid. Please re-export cookies from YouTube while logged in.' : 'YouTube requires authentication. Please add cookies or PO Token in Settings.')
+        ? (cookies 
+            ? 'YouTube still requires authentication. Your uploaded cookies file may be expired or invalid. Please re-export cookies from YouTube while logged in.' 
+            : (serverCookiesActive 
+                ? 'Server authentication session expired. Please contact the administrator to refresh session cookies.' 
+                : 'YouTube requires authentication. Please add cookies or PO Token in Settings.'))
         : (result.error || 'Failed to get video info');
       res.json({ success: false, error });
     }
