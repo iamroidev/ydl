@@ -1,16 +1,48 @@
-# RoiTube (ydl) 🎥✨
+# RoiTube (`ydl`)
 
-[![Electron](https://img.shields.io/badge/Electron-v28.0.0-3178C6?style=flat&logo=electron&logoColor=white)](https://www.electronjs.org/)
-[![Node.js](https://img.shields.io/badge/Node.js-v18+-339933?style=flat&logo=node.js&logoColor=white)](https://nodejs.org/)
-[![yt-dlp](https://img.shields.io/badge/yt--dlp-Active-FF0000?style=flat&logo=youtube&logoColor=white)](https://github.com/yt-dlp/yt-dlp)
-[![FFmpeg](https://img.shields.io/badge/FFmpeg-Embedded-007ACC?style=flat&logo=ffmpeg&logoColor=white)](https://ffmpeg.org/)
+Cross-platform video and audio downloader for YouTube, TikTok, Instagram, Twitter/X, and 1,800+ sites. Ships as a **portable Electron desktop app** and a **Node.js web server** with real-time progress streaming.
+
+[![Electron](https://img.shields.io/badge/Electron-v28-3178C6?style=flat&logo=electron)](https://www.electronjs.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-v18+-339933?style=flat&logo=node.js)](https://nodejs.org/)
+[![yt-dlp](https://img.shields.io/badge/yt--dlp-Active-FF0000?style=flat&logo=youtube)](https://github.com/yt-dlp/yt-dlp)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-
-RoiTube is a premium, full-featured media downloading utility available as a **portable Electron desktop application** and a **responsive Node.js web server**. It is powered by `yt-dlp` and `ffmpeg` to download high-quality videos, playlists, channels, and audio streams from YouTube, TikTok, Instagram, Twitter/X, and over 1,800+ websites.
 
 ---
 
-## 🌟 Premium Features
+## System Design
+
+```mermaid
+flowchart TB
+  subgraph Desktop
+    Electron[Electron Main]
+    Renderer[Renderer UI]
+    IPC[IPC Bridge]
+    Electron --> IPC --> Renderer
+  end
+
+  subgraph Web
+    Express[Express Server]
+    SSE[SSE Progress Stream]
+    Browser[Browser UI]
+    Express --> SSE --> Browser
+  end
+
+  YTDLP[yt-dlp]
+  FFMPEG[ffmpeg-static]
+
+  Desktop --> YTDLP
+  Web --> YTDLP
+  YTDLP --> FFMPEG
+```
+
+| Variant | Engine | Progress | Challenge bypass |
+|---------|--------|----------|------------------|
+| **Desktop** | Electron + bundled `node` in userData | IPC events | Native JS environment for signature deciphering |
+| **Web** | Express + SSE | Server-sent events | Optional `cookies.txt` upload for datacenter IPs |
+
+---
+
+## Premium Features
 
 *   **⚡ Real-Time Speed Graph & Disk Monitor**: A custom HTML5 canvas dashboard widget showing real-time network download speeds and host disk space availability.
 *   **🎨 Harmonious Theme Customizer**: Supports three curated, sleek themes with smooth transition animations and state persistence (`localStorage`):
@@ -111,3 +143,5 @@ Contributions, bug reports, and feature requests are welcome! Feel free to open 
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+**Author:** [iamroidev](https://github.com/iamroidev)
