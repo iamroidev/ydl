@@ -2,6 +2,8 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
+const https = require('https');
+const http = require('http');
 const { spawn, execSync } = require('child_process');
 const cors = require('cors');
 
@@ -176,63 +178,212 @@ function getFfmpegPath() {
   }
 }
 
+function getVideoFormatArgs(format) {
+  let formatStr;
+  if (format?.quality === '720p') {
+    formatStr = 'bestvideo*[height<=720]+bestaudio/best[height<=720]/best';
+  } else if (format?.quality === '480p') {
+    formatStr = 'bestvideo*[height<=480]+bestaudio/best[height<=480]/best';
+  } else if (format?.quality === '1080p') {
+    formatStr = 'bestvideo*[height<=1080]+bestaudio/best[height<=1080]/best';
+  } else {
+    formatStr = 'bestvideo*+bestaudio/best';
+  }
+
+  const args = ['-f', formatStr, '--merge-output-format', 'mp4'];
+  if (format?.quality) {
+    args.push('-S', 'vcodec:h264,res,acodec:m4a');
+  }
+  return args;
+}
+
+let ytdlpSetupPromise = null;
+
+function verifyYtdlpBinary(binaryPath) {
+  execSync(`"${binaryPath}" --version`, { stdio: 'pipe' });
+}
+
+function safeUnlink(filePath) {
+  try {
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+  } catch (_) {}
+}
+
+function downloadFileWithRedirects(url, filePath) {
+  return new Promise((resolve, reject) => {
+    const request = (currentUrl) => {
+      const client = currentUrl.startsWith('https') ? https : http;
+      client.get(currentUrl, { headers: { 'User-Agent': 'roitube' } }, (response) => {
+        if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
+          response.resume();
+          request(response.headers.location);
+          return;
+        }
+
+        const file = fs.createWriteStream(filePath);
+        const cleanup = (err) => {
+          file.destroy();
+          safeUnlink(filePath);
+          reject(err);
+        };
+
+        file.on('error', cleanup);
+        response.on('error', cleanup);
+        response.pipe(file);
+        file.on('finish', () => {
+          file.close((closeErr) => {
+            if (closeErr) {
+              cleanup(closeErr);
+              return;
+            }
+            if (response.statusCode === 200) {
+              resolve();
+            } else {
+              cleanup(new Error(`Download failed with status ${response.statusCode}`));
+            }
+          });
+        });
+      }).on('error', reject);
+    };
+
+    request(url);
+  });
+}
+
+async function fetchLatestYtdlpRelease() {
+  const releases = await new Promise((resolve, reject) => {
+    https.get(
+      'https://api.github.com/repos/yt-dlp/yt-dlp/releases?per_page=1',
+      { headers: { 'User-Agent': 'roitube' } },
+      (response) => {
+        let body = '';
+        response.on('data', (chunk) => { body += chunk; });
+        response.on('end', () => {
+          if (response.statusCode !== 200) {
+            reject(new Error(`GitHub API returned ${response.statusCode}`));
+            return;
+          }
+          try {
+            resolve(JSON.parse(body));
+          } catch (err) {
+            reject(err);
+          }
+        });
+        response.on('error', reject);
+      }
+    ).on('error', reject);
+  });
+
+  return releases[0].tag_name;
+}
+
+async function downloadYtdlpBinary(targetPath) {
+  const isWin = process.platform === 'win32';
+  const fileName = isWin ? 'yt-dlp.exe' : 'yt-dlp';
+  const version = await fetchLatestYtdlpRelease();
+  const url = `https://github.com/yt-dlp/yt-dlp/releases/download/${version}/${fileName}`;
+  const tempPath = `${targetPath}.download`;
+
+  safeUnlink(tempPath);
+  await downloadFileWithRedirects(url, tempPath);
+  if (!isWin) {
+    fs.chmodSync(tempPath, 0o755);
+  }
+  verifyYtdlpBinary(tempPath);
+
+  try {
+    safeUnlink(targetPath);
+    fs.renameSync(tempPath, targetPath);
+    return targetPath;
+  } catch (err) {
+    if (err.code === 'EPERM' || err.code === 'EBUSY' || err.code === 'EACCES') {
+      if (fs.existsSync(targetPath)) {
+        try {
+          verifyYtdlpBinary(targetPath);
+          safeUnlink(tempPath);
+          return targetPath;
+        } catch (_) {}
+      }
+      return tempPath;
+    }
+    safeUnlink(tempPath);
+    throw err;
+  }
+}
+
 // Find or download yt-dlp with 24-hour auto-update checks
 async function ensureYtdlp(forceUpdate = false) {
-  const isWin = process.platform === 'win32';
-  
-  // First, check for system-installed yt-dlp (from pip or package manager)
-  if (!forceUpdate && !ytdlpPath) {
-    try {
-      const systemVersion = execSync('yt-dlp --version', { stdio: 'pipe' }).toString().trim();
-      if (systemVersion) {
-        ytdlpPath = 'yt-dlp';
-        console.log('Found system-installed yt-dlp version:', systemVersion);
-        return;
-      }
-    } catch (err) {
-      console.log('No system yt-dlp found, checking local binary...');
-    }
+  if (ytdlpSetupPromise && !forceUpdate) {
+    return ytdlpSetupPromise;
   }
-  
-  const YTDlpWrap = require('yt-dlp-wrap').default;
-  const localBinary = path.join(DATA_DIR, isWin ? 'yt-dlp.exe' : 'yt-dlp');
-  
-  let needsDownload = true;
-  
-  if (!forceUpdate && fs.existsSync(localBinary)) {
-    try {
-      // Check file age - if less than 24 hours, skip download
-      const stats = fs.statSync(localBinary);
-      const ageHours = (Date.now() - stats.mtime.getTime()) / (1000 * 60 * 60);
-      if (ageHours < 24) {
-        execSync(`"${localBinary}" --version`, { stdio: 'pipe' });
+
+  const setupTask = (async () => {
+    const isWin = process.platform === 'win32';
+
+    if (!forceUpdate && !ytdlpPath) {
+      try {
+        const systemVersion = execSync('yt-dlp --version', { stdio: 'pipe' }).toString().trim();
+        if (systemVersion) {
+          ytdlpPath = 'yt-dlp';
+          console.log('Found system-installed yt-dlp version:', systemVersion);
+          return;
+        }
+      } catch (err) {
+        console.log('No system yt-dlp found, checking local binary...');
+      }
+    }
+
+    const localBinary = path.join(DATA_DIR, isWin ? 'yt-dlp.exe' : 'yt-dlp');
+    let needsDownload = forceUpdate;
+
+    if (!needsDownload && fs.existsSync(localBinary)) {
+      try {
+        const stats = fs.statSync(localBinary);
+        const ageHours = (Date.now() - stats.mtime.getTime()) / (1000 * 60 * 60);
+        verifyYtdlpBinary(localBinary);
         ytdlpPath = localBinary;
-        console.log('Found fresh cached yt-dlp at:', ytdlpPath);
-        needsDownload = false;
+        if (ageHours < 24) {
+          console.log('Found fresh cached yt-dlp at:', ytdlpPath);
+          return;
+        }
+        console.log('Cached yt-dlp is older than 24h, attempting update...');
+        needsDownload = true;
+      } catch (err) {
+        console.log('Cached yt-dlp failed execution or is corrupted, re-downloading...');
+        needsDownload = true;
       }
-    } catch (err) {
-      console.log('Cached yt-dlp failed execution or is corrupted, re-downloading...');
     }
-  }
-  
-  if (needsDownload) {
-    console.log('Downloading latest stable yt-dlp from GitHub to:', localBinary);
-    try {
-      if (fs.existsSync(localBinary)) {
-        fs.unlinkSync(localBinary);
+
+    if (needsDownload) {
+      console.log('Downloading latest stable yt-dlp from GitHub to:', localBinary);
+      try {
+        ytdlpPath = await downloadYtdlpBinary(localBinary);
+        console.log('yt-dlp updated/downloaded successfully to:', ytdlpPath);
+      } catch (err) {
+        console.error('Failed to download yt-dlp from GitHub:', err);
+        if (fs.existsSync(localBinary)) {
+          try {
+            verifyYtdlpBinary(localBinary);
+            ytdlpPath = localBinary;
+            console.log('Using existing yt-dlp at:', ytdlpPath);
+            return;
+          } catch (_) {}
+        }
+        ytdlpPath = isWin ? 'yt-dlp.exe' : 'yt-dlp';
       }
-      await YTDlpWrap.downloadFromGithub(localBinary);
-      if (!isWin) {
-        fs.chmodSync(localBinary, 0o755);
-      }
-      ytdlpPath = localBinary;
-      console.log('yt-dlp updated/downloaded successfully to:', ytdlpPath);
-    } catch (err) {
-      console.error('Failed to download yt-dlp from GitHub:', err);
-      // Fallback to global/system executable
-      ytdlpPath = isWin ? 'yt-dlp.exe' : 'yt-dlp';
     }
+  })();
+
+  if (!forceUpdate) {
+    ytdlpSetupPromise = setupTask.finally(() => {
+      ytdlpSetupPromise = null;
+    });
+    return ytdlpSetupPromise;
   }
+
+  return setupTask;
 }
 
 // Initialize yt-dlp
@@ -647,19 +798,7 @@ app.post('/api/download/start', async (req, res) => {
     if (type === 'audio') {
       baseArgs.push('-x', '--audio-format', 'mp3', '--audio-quality', '0');
     } else {
-      let formatStr;
-      if (format?.quality === '720p') {
-        formatStr = 'bestvideo[height<=720]+bestaudio/best[height<=720]';
-      } else if (format?.quality === '480p') {
-        formatStr = 'bestvideo[height<=480]+bestaudio/best[height<=480]';
-      } else if (format?.quality === '1080p') {
-        formatStr = 'bestvideo[height<=1080]+bestaudio/best[height<=1080]';
-      } else {
-        formatStr = 'bestvideo+bestaudio/best';
-      }
-      baseArgs.push('-f', formatStr);
-      baseArgs.push('-S', 'vcodec:h264,acodec:m4a');
-      baseArgs.push('--recode-video', 'mp4');
+      baseArgs.push(...getVideoFormatArgs(format));
     }
     
     baseArgs.push(url);
@@ -1190,13 +1329,8 @@ app.post('/api/update-ytdlp', async (req, res) => {
     }
     
     // Fallback: download from GitHub
-    const YTDlpWrap = require('yt-dlp-wrap').default;
     const downloadTo = path.join(DATA_DIR, isWin ? 'yt-dlp.exe' : 'yt-dlp');
-    await YTDlpWrap.downloadFromGithub(downloadTo);
-    if (!isWin) {
-      fs.chmodSync(downloadTo, 0o755);
-    }
-    ytdlpPath = downloadTo;
+    ytdlpPath = await downloadYtdlpBinary(downloadTo);
     const newVersion = execSync(`"${ytdlpPath}" --version`, { stdio: 'pipe' }).toString().trim();
     console.log('yt-dlp updated via GitHub to:', newVersion);
     res.json({ success: true, version: newVersion });

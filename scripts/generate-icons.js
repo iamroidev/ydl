@@ -3,10 +3,7 @@ const path = require('path');
 
 const sizes = [72, 96, 128, 144, 152, 192, 384, 512];
 const iconsDir = path.join(__dirname, '..', 'web', 'public', 'icons');
-
-if (!fs.existsSync(iconsDir)) {
-  fs.mkdirSync(iconsDir, { recursive: true });
-}
+const buildDir = path.join(__dirname, '..', 'build');
 
 const svgTemplate = (size) => `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
@@ -20,10 +17,43 @@ const svgTemplate = (size) => `<?xml version="1.0" encoding="UTF-8"?>
   <path d="M${size * 0.36} ${size * 0.31}l${size * 0.39} ${size * 0.19}-${size * 0.39} ${size * 0.19}V${size * 0.31}z" fill="white"/>
 </svg>`;
 
+if (!fs.existsSync(iconsDir)) {
+  fs.mkdirSync(iconsDir, { recursive: true });
+}
+if (!fs.existsSync(buildDir)) {
+  fs.mkdirSync(buildDir, { recursive: true });
+}
+
 sizes.forEach(size => {
   const filePath = path.join(iconsDir, `icon-${size}.svg`);
   fs.writeFileSync(filePath, svgTemplate(size));
   console.log(`Created ${filePath}`);
 });
 
-console.log('All SVG icons generated!');
+fs.writeFileSync(path.join(buildDir, 'icon.svg'), svgTemplate(512));
+console.log(`Created ${path.join(buildDir, 'icon.svg')}`);
+
+async function generateRasterIcons() {
+  const sharp = require('sharp');
+  const toIco = require('to-ico');
+
+  const icoSizes = [16, 32, 48, 64, 128, 256];
+  const pngBuffers = await Promise.all(
+    icoSizes.map((size) => sharp(Buffer.from(svgTemplate(size))).png().toBuffer())
+  );
+
+  const icoPath = path.join(buildDir, 'icon.ico');
+  fs.writeFileSync(icoPath, await toIco(pngBuffers));
+  console.log(`Created ${icoPath}`);
+
+  const pngPath = path.join(buildDir, 'icon.png');
+  await sharp(Buffer.from(svgTemplate(512))).png().toFile(pngPath);
+  console.log(`Created ${pngPath}`);
+}
+
+generateRasterIcons()
+  .then(() => console.log('All icons generated!'))
+  .catch((err) => {
+    console.error('Failed to generate raster icons:', err);
+    process.exit(1);
+  });

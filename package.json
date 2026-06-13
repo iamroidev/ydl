@@ -10,7 +10,7 @@
     "dev": "electron . --dev",
     "build": "electron-builder",
     "build:win": "electron-builder --win",
-    "build:portable": "electron-builder --win portable",
+    "build:portable": "npm run web:icons && electron-builder --win portable",
     "build:linux": "electron-builder --linux rpm",
     "build:linux:debug": "TMPDIR=./tmp ELECTRON_BUILDER_LOGGING=debug DEBUG=electron-builder electron-builder --linux rpm",
     "web": "cd web && node server.js",
@@ -29,6 +29,8 @@
     ],
     "files": [
       "src/**/*",
+      "build/icon.ico",
+      "build/icon.png",
       "node_modules/**/*",
       "package.json"
     ],
@@ -76,7 +78,9 @@
   ],
   "devDependencies": {
     "electron": "^28.0.0",
-    "electron-builder": "^24.13.3"
+    "electron-builder": "^24.13.3",
+    "sharp": "^0.33.5",
+    "to-ico": "^1.1.5"
   },
   "dependencies": {
     "docker": "^1.0.0",
